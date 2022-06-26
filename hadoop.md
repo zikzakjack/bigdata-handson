@@ -78,11 +78,25 @@ NYSE|CQB|2009-02-10|14.85|14.99|13.65|13.78|660900|13.78
 [hduser@localhost ~]$ sed -n 1000p /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
 NYSE|CQB|2009-02-10|14.85|14.99|13.65|13.78|660900|13.78
 
-
 ```
 
 ___
 3. Create a directory in Hadoop namely /tmp/hdfsusecases
+
+```
+-- check if the directory already exists
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases
+ls: `/tmp/hdfsusecases': No such file or directory
+
+-- create directory
+[hduser@localhost ~]$ hadoop fs -mkdir -p /tmp/hdfsusecases
+
+-- verify if the directory is created
+[hduser@localhost ~]$ hadoop fs -ls -d -h /tmp/hdfsusecases
+drwxr-xr-x   - hduser supergroup          0 2022-06-26 11:01 /tmp/hdfsusecases
+
+
+```
 
 
 ___
