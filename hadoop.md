@@ -1,0 +1,122 @@
+# HDFS Sample Usecases
+
+___
+1. Create a new directory in linux namely ~/install/hdfsusecases and create a new file inside the above directory
+namely ~/install/hdfsusecases/NYSE_2020_06_20.txt copying the first 1000 lines from an existing file
+~/pigdata/NYSE_daily
+
+
+___
+2. Create another new file inside the above directory namely ~/install/hdfsusecases/NYSE_2020_06_21.txt copying
+the line from 1001 to 2000 from an existing file ~/pigdata/NYSE_daily
+
+
+___
+3. Create a directory in Hadoop namely /tmp/hdfsusecases
+
+
+___
+4. Check whether the above directory is created in HDFS or not using the below command (Note: We use –test –d
+option to check whether the given path is a directory or not)
+hadoop fs -test -d /tmp/hdfsusecases
+
+
+___
+5. Check what is the status code of the above command using, if it shows 0 then directory is created, if shows non
+zero then the directory is not created then check the step 3 again.
+echo $?
+
+
+___
+6. Copy file generated only in step 1 (~/install/hdfsusecases/NYSE_2020_06_20.txt) from linux to hdfs directory
+/tmp/hdfsusecases in the name of NYSE_2020_06.txt
+
+
+___
+7. Like step 4 and 5, check whether the above file (/tmp/hdfsusecases/NYSE_2020_06.txt) is created or not in HDFS,
+using -f option and check for the status code using $? and create a zero byte file in HDFS directory
+/tmp/hdfsusecases in the name of _SUCCESS
+
+
+___
+8. Append the file generated in step 2 in linux (~/install/hdfsusecases/NYSE_2020_06_20.txt) with the file generated
+in step 6 in the hdfs directory /tmp/hdfsusecases/NYSE_2020_06.txt
+
+
+___
+9. Count the size of the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt
+
+
+___
+10. Count the number of rows are there in the /tmp/hdfsusecases/NYSE_2020_06.txt (Which should show the total
+count of the files created in step1 and 2)
+
+
+___
+11. Display only line 11 to 20 from the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt
+
+
+___
+12. Store line 11 to 20 from the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt into linux file namely
+~/install/hdfsusecases/NYSE_sampledata1.txt
+
+
+___
+13. Delete the line number 1 from the HDFS file /tmp/hdfsusecases/NYSE_2020_06.txt , for example if the above file
+contains 100 rows, after deletion it should have only 99 rows in HDFS
+Note: we can’t do this directly because of the WORM property of HDFS data, think about the possible work
+around and try to achive the result
+
+
+___
+14. Copy the above file /tmp/hdfsusecases/NYSE_2020_06.txt in the name of
+
+/tmp/hdfsusecases/NYSE_2020_06_bkp.txt
+
+
+___
+15. Merge the files in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt and /tmp/hdfsusecases/NYSE_2020_06_bkp.txt
+into Linux directory namely ~/install/hdfsusecases/NYSE_2020_06_merged.txt
+Note: We have to use the option called -getmerge to achieve this as given below.
+hadoop fs -getmerge /tmp/hdfsusecases/NYSE_2020_06_bkp.txt /tmp/hdfsusecases/NYSE_2020_06.txt
+~/install/hdfsusecases/NYSE_2020_06_merged.txt
+
+
+___
+16. Set the blocksize 64MB while writing the file in HDFS, check in the UI how many blocks are generated
+hadoop fs -D dfs.block.size=67108864 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
+
+
+___
+17. Set the blocksize 128MB (134217728) for the same file generated in step 16 and replace the existing file in HDFS.
+
+
+___
+18. Set the replication to 3 while writing the file in HDFS
+hadoop fs -D dfs.replication=3 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
+
+
+___
+19. To check the block information (In which datanode block is present,no of blocks,size,replication, etc)
+hadoop fsck - -files -locations -blocks /user/hduser/hadoop-2.7.1.tar.gz
+
+
+___
+20. Important Command DistCp (distributed copy) is a tool used for copying data between one Hadoop cluster to
+another cluster or with in the same cluster using mappers. (Interview Question – how do you copy data from
+production Hadoop cluster to Dev Hadoop cluster)
+hadoop distcp hdfs://localhost:54310/user/hduser/hadoop-2.7.1.tar.gz
+hdfs://localhost:54310/user/hduser/hadoop/
+
+
+___
+21. choose to overwrite the target files unconditionally even if it exists using upto 2 mappers depends
+hadoop distcp -overwrite hdfs://localhost:54310/user/hduser/hadoop-2.7.1.tar.gz
+hdfs://localhost:54310/user/hduser/hadoop/
+
+
+___
+22. To view the content of editlog file, need to convert into xml file using editlog viewer
+hdfs oev -i edits_inprogress_0000000000000009315 -o edittest.xml
+
+___
