@@ -5,7 +5,34 @@ ___
 namely ~/install/hdfsusecases/NYSE_2020_06_20.txt copying the first 1000 lines from an existing file
 ~/pigdata/NYSE_daily
 
+```
+-- check the present working directory
+[hduser@localhost ~]$ pwd
+/home/hduser
 
+-- Create a new directory
+[hduser@localhost ~]$ mkdir ~/install/hdfsusecases
+
+-- check if directory is created
+[hduser@localhost ~]$ ls -l ~/install/hdfsusecases
+total 0
+
+-- check if the source file exists
+[hduser@localhost ~]$ ls -l ~/pigdata/NYSE_daily
+-rw-------. 1 hduser hduser 3194099 Jun 16  2015 /home/hduser/pigdata/NYSE_daily
+
+-- copy first 1000 lines from ~/pigdata/NYSE_daily to ~/install/hdfsusecases/NYSE_2020_06_20.txt
+[hduser@localhost ~]$ head -1000 ~/pigdata/NYSE_daily > ~/install/hdfsusecases/NYSE_2020_06_20.txt
+
+-- verify if the new file is created
+[hduser@localhost ~]$ ls -l ~/install/hdfsusecases/NYSE_2020_06_20.txt
+-rw-rw-r--. 1 hduser hduser 57446 Jun 26 10:08 /home/hduser/install/hdfsusecases/NYSE_2020_06_20.txt
+
+-- verify if the lines count is 1000
+[hduser@localhost ~]$ wc -l ~/install/hdfsusecases/NYSE_2020_06_20.txt
+1000 /home/hduser/install/hdfsusecases/NYSE_2020_06_20.txt
+
+```
 ___
 2. Create another new file inside the above directory namely ~/install/hdfsusecases/NYSE_2020_06_21.txt copying
 the line from 1001 to 2000 from an existing file ~/pigdata/NYSE_daily
