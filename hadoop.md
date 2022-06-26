@@ -32,11 +32,54 @@ total 0
 [hduser@localhost ~]$ wc -l ~/install/hdfsusecases/NYSE_2020_06_20.txt
 1000 /home/hduser/install/hdfsusecases/NYSE_2020_06_20.txt
 
+-- compare 1st line from both files 
+[hduser@localhost ~]$ sed -n 1p ~/pigdata/NYSE_daily
+NYSE|CLI|2009-12-31|35.39|35.70|34.50|34.57|890100|34.12
+
+[hduser@localhost ~]$ sed -n 1p /home/hduser/install/hdfsusecases/NYSE_2020_06_20.txt
+NYSE|CLI|2009-12-31|35.39|35.70|34.50|34.57|890100|34.12
+
+-- compare 1000th line from both files 
+[hduser@localhost ~]$ sed -n 1000p ~/pigdata/NYSE_daily
+NYSE|CVH|2009-01-21|12.16|12.48|11.92|12.41|3220600|12.41
+
+[hduser@localhost ~]$ sed -n 1000p /home/hduser/install/hdfsusecases/NYSE_2020_06_20.txt
+NYSE|CVH|2009-01-21|12.16|12.48|11.92|12.41|3220600|12.41
+
 ```
 ___
 2. Create another new file inside the above directory namely ~/install/hdfsusecases/NYSE_2020_06_21.txt copying
 the line from 1001 to 2000 from an existing file ~/pigdata/NYSE_daily
 
+``` 
+
+-- copy first 1001 to 2000 lines from ~/pigdata/NYSE_daily to ~/install/hdfsusecases/NYSE_2020_06_21.txt
+head -n 2000 ~/pigdata/NYSE_daily | tail -n 1000 > ~/install/hdfsusecases/NYSE_2020_06_21.txt
+
+-- verify if the new file is created
+[hduser@localhost ~]$ ls -l ~/install/hdfsusecases/NYSE_2020_06_21.txt
+-rw-rw-r--. 1 hduser hduser 55610 Jun 26 10:22 /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
+
+-- verify if the lines count is 1000
+[hduser@localhost ~]$ wc -l /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
+1000 /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
+
+-- compare 1001 line from source and 1st line from new file 
+[hduser@localhost ~]$ sed -n 1001p ~/pigdata/NYSE_daily
+NYSE|CVH|2009-01-20|12.62|12.79|11.77|11.92|3424400|11.92
+
+[hduser@localhost ~]$ sed -n 1p /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
+NYSE|CVH|2009-01-20|12.62|12.79|11.77|11.92|3424400|11.92
+
+-- compare 2000 line from source and 1000th line from new file 
+[hduser@localhost ~]$ sed -n 2000p ~/pigdata/NYSE_daily
+NYSE|CQB|2009-02-10|14.85|14.99|13.65|13.78|660900|13.78
+
+[hduser@localhost ~]$ sed -n 1000p /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
+NYSE|CQB|2009-02-10|14.85|14.99|13.65|13.78|660900|13.78
+
+
+```
 
 ___
 3. Create a directory in Hadoop namely /tmp/hdfsusecases
