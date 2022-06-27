@@ -403,6 +403,14 @@ ___
 16. Set the blocksize 64MB while writing the file in HDFS, check in the UI how many blocks are generated
 hadoop fs -D dfs.block.size=67108864 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
 
+``` 
+[hduser@localhost ~]$ hadoop fs -D dfs.block.size=67108864 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
+
+Refer Image below:
+![64 MB block size](resources/images/hadoop-block-size-64mb.png)
+ 
+
+```
 
 ___
 17. Set the blocksize 128MB (134217728) for the same file generated in step 16 and replace the existing file in HDFS.
