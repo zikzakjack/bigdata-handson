@@ -226,7 +226,8 @@ Found 2 items
 ___
 9. Count the size of the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt
 
-``` 
+```
+-- find the size of hdfs file 
 [hduser@localhost ~]$ hadoop fs -count /tmp/hdfsusecases/NYSE_2020_06.txt
            0            1             112998 /tmp/hdfsusecases/NYSE_2020_06.txt
 
@@ -235,6 +236,12 @@ ___
 10. Count the number of rows are there in the /tmp/hdfsusecases/NYSE_2020_06.txt (Which should show the total
 count of the files created in step1 and 2)
 
+``` 
+-- count the no of lines in hdfs file
+[hduser@localhost ~]$ hadoop fs -cat /tmp/hdfsusecases/NYSE_2020_06.txt | wc -l
+2000
+
+```
 
 ___
 11. Display only line 11 to 20 from the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt
