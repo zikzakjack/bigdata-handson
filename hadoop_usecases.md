@@ -198,9 +198,30 @@ Found 2 items
 ```
 
 ___
-8. Append the file generated in step 2 in linux (~/install/hdfsusecases/NYSE_2020_06_20.txt) with the file generated
+8. Append the file generated in step 2 in linux (~/install/hdfsusecases/NYSE_2020_06_21.txt) with the file generated
 in step 6 in the hdfs directory /tmp/hdfsusecases/NYSE_2020_06.txt
 
+``` 
+-- check if the file exists locally
+[hduser@localhost ~]$ ls -l ~/install/hdfsusecases/NYSE_2020_06_21.txt
+-rw-rw-r--. 1 hduser hduser 55552 Jun 26 10:32 /home/hduser/install/hdfsusecases/NYSE_2020_06_21.txt
+
+-- list the files in the hdfs directory before appending
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 2 items
+-rw-r--r--   1 hduser supergroup      57446 2022-06-27 00:43 /tmp/hdfsusecases/NYSE_2020_06.txt
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+-- append the file from local to hdfs
+[hduser@localhost ~]$ hadoop fs -appendToFile ~/install/hdfsusecases/NYSE_2020_06_21.txt /tmp/hdfsusecases/NYSE_2020_06.txt
+
+-- list the files in the hdfs directory after appending
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 2 items
+-rw-r--r--   1 hduser supergroup     112998 2022-06-27 01:09 /tmp/hdfsusecases/NYSE_2020_06.txt
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+```
 
 ___
 9. Count the size of the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt
