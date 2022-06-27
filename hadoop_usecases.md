@@ -170,6 +170,32 @@ ___
 using -f option and check for the status code using $? and create a zero byte file in HDFS directory
 /tmp/hdfsusecases in the name of _SUCCESS
 
+``` 
+
+-- check if the path exists
+[hduser@localhost ~]$ hadoop fs -test -e /tmp/hdfsusecases/NYSE_2020_06.txt
+
+-- check the exit code
+[hduser@localhost ~]$ echo $?
+0
+
+-- check if the path is a file
+[hduser@localhost ~]$ hadoop fs -test -f /tmp/hdfsusecases/NYSE_2020_06.txt
+
+-- check the exit code
+[hduser@localhost ~]$ echo $?
+0
+
+-- create zero byte file
+[hduser@localhost ~]$ hadoop fs -touchz /tmp/hdfsusecases/_SUCCESS
+
+-- list the files in the hdfs directory
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 2 items
+-rw-r--r--   1 hduser supergroup      57446 2022-06-27 00:43 /tmp/hdfsusecases/NYSE_2020_06.txt
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+```
 
 ___
 8. Append the file generated in step 2 in linux (~/install/hdfsusecases/NYSE_2020_06_20.txt) with the file generated
