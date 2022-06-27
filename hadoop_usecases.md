@@ -120,13 +120,30 @@ hadoop fs -test -d /tmp/hdfsusecases
 [hduser@localhost ~]$ echo $?
 0
 
-
 ```
+
 ___
 5. Check what is the status code of the above command using, if it shows 0 then directory is created, if shows non
 zero then the directory is not created then check the step 3 again.
 echo $?
 
+``` 
+
+-- check if the path exists
+[hduser@localhost ~]$ hadoop fs -test -e /tmp/hdfsusecases
+
+-- check the exit code
+[hduser@localhost ~]$ echo $?
+0
+
+-- check if the path is a directory
+[hduser@localhost ~]$ hadoop fs -test -d /tmp/hdfsusecases
+
+-- check the exit code
+[hduser@localhost ~]$ echo $?
+0
+
+```
 
 ___
 6. Copy file generated only in step 1 (~/install/hdfsusecases/NYSE_2020_06_20.txt) from linux to hdfs directory
