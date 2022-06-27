@@ -349,6 +349,11 @@ Found 2 items
 [hduser@localhost tmp]$ hadoop fs -cat /tmp/hdfsusecases/NYSE_2020_06.txt | wc -l
 1999
 
+-- come out of temprary temporary working directory in local
+[hduser@localhost tmp]$ cd ~
+[hduser@localhost ~]$ pwd
+/home/hduser
+
 ```
 
 ___
@@ -356,6 +361,26 @@ ___
 
 /tmp/hdfsusecases/NYSE_2020_06_bkp.txt
 
+``` 
+
+-- list the files in hdfs directory
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 2 items
+-rw-r--r--   1 hduser supergroup     112941 2022-06-27 03:40 /tmp/hdfsusecases/NYSE_2020_06.txt
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+-- take a backup preserving the timestamp and other attributes
+[hduser@localhost ~]$ hadoop fs -cp -ptopax /tmp/hdfsusecases/NYSE_2020_06.txt /tmp/hdfsusecases/NYSE_2020_06_bkp.txt
+
+-- list the files in hdfs directory to check if the backup file is created
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 3 items
+-rw-r--r--   1 hduser supergroup     112941 2022-06-27 03:40 /tmp/hdfsusecases/NYSE_2020_06.txt
+-rw-r--r--   1 hduser supergroup     112941 2022-06-27 03:40 /tmp/hdfsusecases/NYSE_2020_06_bkp.txt
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+
+```
 
 ___
 15. Merge the files in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt and /tmp/hdfsusecases/NYSE_2020_06_bkp.txt
