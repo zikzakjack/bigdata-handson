@@ -638,4 +638,75 @@ ___
 22. To view the content of editlog file, need to convert into xml file using editlog viewer
 hdfs oev -i edits_inprogress_0000000000000009315 -o edittest.xml
 
+``` 
+-- find where hadoop is installed (/usr/local/hadoop/)
+[hduser@localhost ~]$ which hadoop
+/usr/local/hadoop/bin/hadoop
+
+-- find where config files are located
+[hduser@localhost ~]$ find /usr/local/hadoop -name hdfs-site.xml
+/usr/local/hadoop/share/hadoop/hdfs/templates/hdfs-site.xml
+/usr/local/hadoop/etc/hadoop/hdfs-site.xml
+
+[hduser@localhost ~]$ cat /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+        <description>Default block replication.
+            The actual number of replications can be specified when the file is created.
+            The default is used if replication is not specified in create time.
+        </description>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:/usr/local/hadoop_store/hdfs/namenode</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:/usr/local/hadoop_store/hdfs/datanode</value>
+    </property>
+    <property>
+        <name>dfs.namenode.checkpoint.dir</name>
+        <value>file:/usr/local/hadoop_store/hdfs/secondarynamenode</value>
+    </property>
+    <property>
+        <name>dfs.namenode.checkpoint.period</name>
+        <value>600</value>
+    </property>
+</configuration>
+
+-- locate editlogs
+[hduser@localhost ~]$ find /usr/local/hadoop_store/ -name "*edits_inprogress*"
+/usr/local/hadoop_store/hdfs/namenode/current/edits_inprogress_0000000000000000472
+
+-- run hdfs oev
+/usr/local/hadoop_store/hdfs/namenode/current/edits_inprogress_0000000000000000472
+[hduser@localhost ~]$ hdfs oev -i /usr/local/hadoop_store/hdfs/namenode/current/edits_inprogress_0000000000000000472 -o edittest.xml
+
+[hduser@localhost ~]$ ls -ltr
+total 64
+drwxr-xr-x.  2 hduser hduser     6 Feb 20  2018 Videos
+drwxr-xr-x.  2 hduser hduser     6 Feb 20  2018 Templates
+.
+.
+.
+drwxrwxr-x.  2 hduser hduser    30 Jun 27 03:33 tmp
+drwxr-xr-x.  2 hduser hduser   100 Jun 27 05:34 Pictures
+-rw-rw-r--.  1 hduser hduser   204 Jun 27 07:06 edittest.xml
+
+[hduser@localhost ~]$ cat edittest.xml 
+<?xml version="1.0" encoding="UTF-8"?>
+<EDITS>
+  <EDITS_VERSION>-63</EDITS_VERSION>
+  <RECORD>
+    <OPCODE>OP_START_LOG_SEGMENT</OPCODE>
+    <DATA>
+      <TXID>472</TXID>
+    </DATA>
+  </RECORD>
+</EDITS>
+
+```
 ___
