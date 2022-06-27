@@ -570,7 +570,70 @@ ___
 hadoop distcp -overwrite hdfs://localhost:54310/user/hduser/hadoop-2.7.1.tar.gz
 hdfs://localhost:54310/user/hduser/hadoop/
 
+``` 
+[hduser@localhost ~]$ hadoop distcp -overwrite hdfs://localhost:54310/user/hduser/hadoop-2.7.1.tar.gz hdfs://localhost:54310/user/hduser/hadoop/
+22/06/27 06:27:37 INFO tools.DistCp: Input Options: DistCpOptions{atomicCommit=false, syncFolder=false, deleteMissing=false, ignoreFailures=false, maxMaps=20, sslConfigurationFile='null', copyStrategy='uniformsize', sourceFileListing=null, sourcePaths=[hdfs://localhost:54310/user/hduser/hadoop-2.7.1.tar.gz], targetPath=hdfs://localhost:54310/user/hduser/hadoop, targetPathExists=true, preserveRawXattrs=false}
+22/06/27 06:27:37 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/06/27 06:27:40 INFO Configuration.deprecation: io.sort.mb is deprecated. Instead, use mapreduce.task.io.sort.mb
+22/06/27 06:27:40 INFO Configuration.deprecation: io.sort.factor is deprecated. Instead, use mapreduce.task.io.sort.factor
+22/06/27 06:27:41 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/06/27 06:27:42 INFO mapreduce.JobSubmitter: number of splits:1
+22/06/27 06:27:43 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1647790191291_0002
+22/06/27 06:27:44 INFO impl.YarnClientImpl: Submitted application application_1647790191291_0002
+22/06/27 06:27:44 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1647790191291_0002/
+22/06/27 06:27:44 INFO tools.DistCp: DistCp job-id: job_1647790191291_0002
+22/06/27 06:27:44 INFO mapreduce.Job: Running job: job_1647790191291_0002
+22/06/27 06:28:05 INFO mapreduce.Job: Job job_1647790191291_0002 running in uber mode : false
+22/06/27 06:28:05 INFO mapreduce.Job:  map 0% reduce 0%
+22/06/27 06:28:24 INFO mapreduce.Job:  map 100% reduce 0%
+22/06/27 06:28:37 INFO mapreduce.Job: Job job_1647790191291_0002 completed successfully
+22/06/27 06:28:38 INFO mapreduce.Job: Counters: 33
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=118463
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=210607181
+		HDFS: Number of bytes written=210606807
+		HDFS: Number of read operations=19
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=5
+	Job Counters 
+		Launched map tasks=1
+		Other local map tasks=1
+		Total time spent by all maps in occupied slots (ms)=29041
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=29041
+		Total vcore-seconds taken by all map tasks=29041
+		Total megabyte-seconds taken by all map tasks=29737984
+	Map-Reduce Framework
+		Map input records=1
+		Map output records=0
+		Input split bytes=135
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=859
+		CPU time spent (ms)=8170
+		Physical memory (bytes) snapshot=156315648
+		Virtual memory (bytes) snapshot=2083909632
+		Total committed heap usage (bytes)=87293952
+	File Input Format Counters 
+		Bytes Read=239
+	File Output Format Counters 
+		Bytes Written=0
+	org.apache.hadoop.tools.mapred.CopyMapper$Counter
+		BYTESCOPIED=210606807
+		BYTESEXPECTED=210606807
+		COPY=1
 
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/hadoop/
+-rw-r--r--   1 hduser hadoop  210606807 2022-06-27 06:28 /user/hduser/hadoop
+
+
+```
 ___
 22. To view the content of editlog file, need to convert into xml file using editlog viewer
 hdfs oev -i edits_inprogress_0000000000000009315 -o edittest.xml
