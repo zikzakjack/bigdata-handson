@@ -455,7 +455,42 @@ ___
 19. To check the block information (In which datanode block is present,no of blocks,size,replication, etc)
 hadoop fsck - -files -locations -blocks /user/hduser/hadoop-2.7.1.tar.gz
 
+``` 
 
+[hduser@localhost ~]$ hadoop fsck - -files -locations -blocks /user/hduser/hadoop-2.7.1.tar.gz
+DEPRECATED: Use of this script to execute hdfs command is deprecated.
+Instead use the hdfs command for it.
+
+Connecting to namenode via http://localhost:50070/fsck?ugi=hduser&files=1&locations=1&blocks=1&path=%2Fuser%2Fhduser%2Fhadoop-2.7.1.tar.gz
+FSCK started by hduser (auth:SIMPLE) from /127.0.0.1 for path /user/hduser/hadoop-2.7.1.tar.gz at Mon Jun 27 06:19:13 EDT 2022
+/user/hduser/hadoop-2.7.1.tar.gz 210606807 bytes, 2 block(s):  Under replicated BP-1791687383-127.0.0.1-1647790118119:blk_1073741835_1012. Target Replicas is 3 but found 1 replica(s).
+ Under replicated BP-1791687383-127.0.0.1-1647790118119:blk_1073741836_1013. Target Replicas is 3 but found 1 replica(s).
+0. BP-1791687383-127.0.0.1-1647790118119:blk_1073741835_1012 len=134217728 repl=1 [DatanodeInfoWithStorage[127.0.0.1:50010,DS-4244cc90-5afc-4474-8dac-033f4bb19e5e,DISK]]
+1. BP-1791687383-127.0.0.1-1647790118119:blk_1073741836_1013 len=76389079 repl=1 [DatanodeInfoWithStorage[127.0.0.1:50010,DS-4244cc90-5afc-4474-8dac-033f4bb19e5e,DISK]]
+
+Status: HEALTHY
+ Total size:	210606807 B
+ Total dirs:	0
+ Total files:	1
+ Total symlinks:		0
+ Total blocks (validated):	2 (avg. block size 105303403 B)
+ Minimally replicated blocks:	2 (100.0 %)
+ Over-replicated blocks:	0 (0.0 %)
+ Under-replicated blocks:	2 (100.0 %)
+ Mis-replicated blocks:		0 (0.0 %)
+ Default replication factor:	1
+ Average block replication:	1.0
+ Corrupt blocks:		0
+ Missing replicas:		4 (66.666664 %)
+ Number of data-nodes:		1
+ Number of racks:		1
+FSCK ended at Mon Jun 27 06:19:13 EDT 2022 in 37 milliseconds
+
+
+The filesystem under path '/user/hduser/hadoop-2.7.1.tar.gz' is HEALTHY
+
+
+```
 ___
 20. Important Command DistCp (distributed copy) is a tool used for copying data between one Hadoop cluster to
 another cluster or with in the same cluster using mappers. (Interview Question – how do you copy data from
