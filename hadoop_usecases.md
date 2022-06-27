@@ -294,6 +294,62 @@ contains 100 rows, after deletion it should have only 99 rows in HDFS
 Note: we can’t do this directly because of the WORM property of HDFS data, think about the possible work
 around and try to achive the result
 
+``` 
+
+-- check the lines count in hdfs file
+[hduser@localhost ~]$ hadoop fs -cat /tmp/hdfsusecases/NYSE_2020_06.txt | wc -l
+2000
+
+-- check the present working directory in local
+[hduser@localhost ~]$ pwd
+/home/hduser
+
+-- create a temporary working directory in local
+[hduser@localhost ~]$ mkdir tmp
+
+-- change to temporary working directory in local
+[hduser@localhost ~]$ cd tmp
+
+-- check the present working directory in local
+[hduser@localhost tmp]$ pwd
+/home/hduser/tmp
+
+-- copy the file from hdfs to temporary working directory in local
+[hduser@localhost tmp]$ hadoop fs -copyToLocal /tmp/hdfsusecases/NYSE_2020_06.txt ~/tmp
+
+-- check if the file is copied to local
+[hduser@localhost tmp]$ ls -l ~/tmp/
+total 112
+-rw-r--r--. 1 hduser hduser 112998 Jun 27 03:33 NYSE_2020_06.txt
+
+-- check the lines count in local
+[hduser@localhost tmp]$ cat NYSE_2020_06.txt | wc -l
+2000
+
+-- delete the file from hdfs
+[hduser@localhost tmp]$ hadoop fs -rm /tmp/hdfsusecases/NYSE_2020_06.txt 
+Deleted /tmp/hdfsusecases/NYSE_2020_06.txt
+
+-- ensure the file is deleted
+[hduser@localhost tmp]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 1 items
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+-- now remove the first line while copying from local to hdfs
+awk 'NR != 1 {print}' ~/tmp/NYSE_2020_06.txt | hdfs dfs -put - /tmp/hdfsusecases/NYSE_2020_06.txt
+
+-- check if the file is copied from local to hdfs
+[hduser@localhost tmp]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 2 items
+-rw-r--r--   1 hduser supergroup     112941 2022-06-27 03:40 /tmp/hdfsusecases/NYSE_2020_06.txt
+-rw-r--r--   1 hduser supergroup          0 2022-06-27 01:00 /tmp/hdfsusecases/_SUCCESS
+
+
+-- count the no of lines in new hdfs file
+[hduser@localhost tmp]$ hadoop fs -cat /tmp/hdfsusecases/NYSE_2020_06.txt | wc -l
+1999
+
+```
 
 ___
 14. Copy the above file /tmp/hdfsusecases/NYSE_2020_06.txt in the name of
