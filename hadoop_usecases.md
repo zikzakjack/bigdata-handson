@@ -246,6 +246,22 @@ count of the files created in step1 and 2)
 ___
 11. Display only line 11 to 20 from the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt
 
+``` 
+
+[hduser@localhost ~]$ hadoop fs -cat /tmp/hdfsusecases/NYSE_2020_06.txt | head -20 | tail -10
+NYSE|CLI|2009-12-16|34.79|35.10|34.48|34.66|1007900|34.21
+NYSE|CLI|2009-12-15|34.60|34.91|34.39|34.84|813200|34.39
+NYSE|CLI|2009-12-14|34.21|34.90|33.86|34.82|987700|34.37
+NYSE|CLI|2009-12-11|33.55|34.08|33.40|34.00|836500|33.56
+NYSE|CLI|2009-12-10|33.61|33.80|33.09|33.26|1296300|32.83
+NYSE|CLI|2009-12-09|33.25|33.71|33.01|33.25|863900|32.82
+NYSE|CLI|2009-12-08|32.57|33.80|32.52|33.18|890000|32.75
+NYSE|CLI|2009-12-07|33.63|33.77|32.78|33.00|961800|32.57
+NYSE|CLI|2009-12-04|33.46|34.12|33.16|33.69|1412400|33.25
+NYSE|CLI|2009-12-03|32.55|33.43|32.48|32.65|1170600|32.22
+cat: Unable to write to output stream.
+
+```
 
 ___
 12. Store line 11 to 20 from the file in HDFS /tmp/hdfsusecases/NYSE_2020_06.txt into linux file namely
