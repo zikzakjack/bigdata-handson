@@ -158,6 +158,11 @@ ___
 -- copy the file from local to hdfs
 [hduser@localhost ~]$ hadoop fs -copyFromLocal /home/hduser/install/hdfsusecases/NYSE_2020_06_20.txt /tmp/hdfsusecases/NYSE_2020_06.txt
 
+-- list the files in the hdfs directory
+[hduser@localhost ~]$ hadoop fs -ls /tmp/hdfsusecases/
+Found 1 items
+-rw-r--r--   1 hduser supergroup      57446 2022-06-27 00:43 /tmp/hdfsusecases/NYSE_2020_06.txt
+
 ```
 
 ___
