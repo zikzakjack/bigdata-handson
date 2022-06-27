@@ -414,6 +414,21 @@ Refer Image below:
 ___
 17. Set the blocksize 128MB (134217728) for the same file generated in step 16 and replace the existing file in HDFS.
 
+``` 
+-- delete the previous file from hdfs
+[hduser@localhost ~]$ hadoop fs -rm /user/hduser/hadoop-2.7.1.tar.gz
+Deleted /user/hduser/hadoop-2.7.1.tar.gz
+
+-- double check
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/hadoop-2.7.1.tar.gz
+ls: `/user/hduser/hadoop-2.7.1.tar.gz': No such file or directory
+
+[hduser@localhost ~]$ hadoop fs -D dfs.block.size=134217728 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
+
+Refer Image below:
+
+```
+![128 MB block size](resources/images/hadoop-block-size-128mb.png)
 
 ___
 18. Set the replication to 3 while writing the file in HDFS
