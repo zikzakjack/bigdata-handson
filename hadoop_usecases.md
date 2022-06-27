@@ -434,6 +434,22 @@ ___
 18. Set the replication to 3 while writing the file in HDFS
 hadoop fs -D dfs.replication=3 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
 
+``` 
+-- delete the previous file from hdfs
+[hduser@localhost ~]$ hadoop fs -rm /user/hduser/hadoop-2.7.1.tar.gz
+Deleted /user/hduser/hadoop-2.7.1.tar.gz
+
+-- double check
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/hadoop-2.7.1.tar.gz
+ls: `/user/hduser/hadoop-2.7.1.tar.gz': No such file or directory
+
+[hduser@localhost ~]$ hadoop fs -D dfs.replication=3 -put /home/hduser/install/hadoop-2.7.1.tar.gz /user/hduser/
+
+Refer Image below:
+
+```
+![Replication Factor is 3](resources/images/hadoop-dfs.replication-3.png)
+
 
 ___
 19. To check the block information (In which datanode block is present,no of blocks,size,replication, etc)
