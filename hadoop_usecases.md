@@ -389,6 +389,15 @@ Note: We have to use the option called -getmerge to achieve this as given below.
 hadoop fs -getmerge /tmp/hdfsusecases/NYSE_2020_06_bkp.txt /tmp/hdfsusecases/NYSE_2020_06.txt
 ~/install/hdfsusecases/NYSE_2020_06_merged.txt
 
+``` 
+-- merge the hdfs files and copy it to local
+[hduser@localhost ~]$ hadoop fs -getmerge /tmp/hdfsusecases/NYSE_2020_06_bkp.txt /tmp/hdfsusecases/NYSE_2020_06.txt ~/install/hdfsusecases/NYSE_2020_06_merged.txt
+
+-- check the new file
+[hduser@localhost ~]$ ls -l ~/install/hdfsusecases/NYSE_2020_06_merged.txt
+-rw-r--r--. 1 hduser hduser 225882 Jun 27 05:23 /home/hduser/install/hdfsusecases/NYSE_2020_06_merged.txt
+
+```
 
 ___
 16. Set the blocksize 64MB while writing the file in HDFS, check in the UI how many blocks are generated
