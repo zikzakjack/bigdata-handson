@@ -16,6 +16,7 @@ queries etc.,
 Create a new Database & Table. Load the data
 
 -- create a new Database
+
 Create database custdb;
 
 ``` 
@@ -50,6 +51,7 @@ Time taken: 0.335 seconds
 ```
 
 -- load the data. Ensure the data is copied to appropriate location in local 
+
 load data local inpath '/home/hduser/hive/data/custs' into table customer;
 
 ``` 
