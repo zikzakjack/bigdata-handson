@@ -40,13 +40,52 @@ hive> create table customer(custno string, firstname string, lastname string, ag
 OK
 Time taken: 0.335 seconds
 
-``` 
 hive> load data local inpath '/home/hduser/hive/data/custs' into table customer;
 Loading data to table custdb.customer
 OK
 Time taken: 1.388 seconds
 
 ```
+
+**Create a new Database & Table to load Customer Transactions data**
+
+Create database retail;
+
+use retail;
+
+create table txnrecords(txnno INT, txndate STRING, custno INT, amount DOUBLE, 
+category STRING, product STRING, city STRING, state STRING, spendby STRING)
+row format delimited 
+fields terminated by ','
+stored as textfile;
+
+load data local inpath '/home/hduser/hive/data/txns' into table txnrecords;
+
+
+``` 
+hive> Create database retail;
+OK
+Time taken: 0.36 seconds
+
+hive> use retail;
+OK
+Time taken: 0.066 seconds
+
+hive> create table txnrecords(txnno INT, txndate STRING, custno INT, amount DOUBLE, 
+    > category STRING, product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited 
+    > fields terminated by ','
+    > stored as textfile;
+OK
+Time taken: 0.335 seconds
+
+hive> load data local inpath '/home/hduser/hive/data/txns' OVERWRITE into table txnrecords;
+Loading data to table custdb.customer
+OK
+Time taken: 1.388 seconds
+
+```
+
 ### Data Curation:
 
 
