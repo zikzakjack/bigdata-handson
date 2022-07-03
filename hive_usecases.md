@@ -410,3 +410,206 @@ OK
 Time taken: 0.363 seconds, Fetched: 10 row(s)
 
 ```
+
+## Performing DML statements in Hive
+
+Question is , can we do DML/ACID transactions in hive as HDFS doesn't support changes??
+Ans: Hive is not for DML/ACID, but it supports in case if we need, but it is cosly to apply.
+Try to update/delete the customer table created above, it won’t work in general.
+
+``` 
+hive> update customer set profession='IT' where custno= 4000001;
+FAILED: SemanticException [Error 10294]: Attempt to do update or delete using transaction manager that does not support these operations.
+
+hive> delete from customer where custno= 4000002;
+FAILED: SemanticException [Error 10294]: Attempt to do update or delete using transaction manager that does not support these operations.
+
+```
+
+**Solution :**
+
+1. Create another hive table with buckets, stored in orc format and transactional table properties true
+for the DML support
+
+create table customerdml(custno string, firstname string, lastname string, age int,profession string)
+clustered by (custno) into 3 buckets
+stored as orc
+TBLPROPERTIES ('transactional'='true');
+
+``` 
+hive> create table customerdml(custno string, firstname string, lastname string, age int,profession string)
+    > clustered by (custno) into 3 buckets
+    > stored as orc
+    > TBLPROPERTIES ('transactional'='true');
+OK
+Time taken: 0.375 seconds
+```
+2. Enable Transaction Support
+
+set hive.support.concurrency=true;
+
+set hive.txn.manager=org.apache.hadoop.hive.ql.lockmgr.DbTxnManager;
+
+```
+hive> set hive.support.concurrency=true;
+hive> set hive.txn.manager=org.apache.hadoop.hive.ql.lockmgr.DbTxnManager;
+```
+
+3. Copy the data from customer to the customerdml table.
+
+insert into customerdml select * from customer;
+
+**tablelocation/delta_1/3 buckets**
+
+``` 
+hive> insert into customerdml select * from customer;
+Query ID = hduser_20220703165153_602671e1-2941-4762-ad8a-82e36aa8b2ec
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 3
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0026, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0026/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0026
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 3
+2022-07-03 16:52:40,028 Stage-1 map = 0%,  reduce = 0%
+2022-07-03 16:52:55,057 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.44 sec
+2022-07-03 16:53:17,556 Stage-1 map = 100%,  reduce = 22%, Cumulative CPU 8.67 sec
+2022-07-03 16:53:20,096 Stage-1 map = 100%,  reduce = 33%, Cumulative CPU 10.75 sec
+2022-07-03 16:53:21,435 Stage-1 map = 100%,  reduce = 56%, Cumulative CPU 15.02 sec
+2022-07-03 16:53:25,007 Stage-1 map = 100%,  reduce = 67%, Cumulative CPU 17.64 sec
+2022-07-03 16:53:29,338 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 23.18 sec
+MapReduce Total cumulative CPU time: 23 seconds 180 msec
+Ended Job = job_1656670722551_0026
+Loading data to table custdb.customerdml
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 3   Cumulative CPU: 23.18 sec   HDFS Read: 409979 HDFS Write: 90618 SUCCESS
+Total MapReduce CPU Time Spent: 23 seconds 180 msec
+OK
+Time taken: 99.572 seconds
+```
+4. Update
+
+Select * from customerdml where custno=4000001;
+
+update customerdml set profession='IT' where custno= 4000001;
+
+Select * from customerdml where custno=4000001;
+
+**tablelocation/delta_2/0 bucket (only updated data)**
+
+``` 
+hive> Select * from customerdml where custno=4000001;
+OK
+4000001	Kristina	Chung	55	Pilot
+Time taken: 0.423 seconds, Fetched: 1 row(s)
+
+hive> update customerdml set profession='IT' where custno= 4000001;
+Query ID = hduser_20220703165452_0b93e310-fa82-49a0-80a0-d43786133236
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 3
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0027, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0027/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0027
+Hadoop job information for Stage-1: number of mappers: 3; number of reducers: 3
+2022-07-03 16:55:33,491 Stage-1 map = 0%,  reduce = 0%
+2022-07-03 16:56:09,201 Stage-1 map = 33%,  reduce = 0%, Cumulative CPU 15.23 sec
+2022-07-03 16:56:11,486 Stage-1 map = 67%,  reduce = 0%, Cumulative CPU 18.1 sec
+2022-07-03 16:56:12,644 Stage-1 map = 89%,  reduce = 0%, Cumulative CPU 26.56 sec
+2022-07-03 16:56:13,735 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 27.13 sec
+2022-07-03 16:56:38,661 Stage-1 map = 100%,  reduce = 56%, Cumulative CPU 35.34 sec
+2022-07-03 16:56:40,887 Stage-1 map = 100%,  reduce = 67%, Cumulative CPU 36.4 sec
+2022-07-03 16:56:41,957 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 40.7 sec
+MapReduce Total cumulative CPU time: 40 seconds 700 msec
+Ended Job = job_1656670722551_0027
+Loading data to table custdb.customerdml
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 3  Reduce: 3   Cumulative CPU: 40.7 sec   HDFS Read: 159775 HDFS Write: 1112 SUCCESS
+Total MapReduce CPU Time Spent: 40 seconds 700 msec
+OK
+Time taken: 112.838 seconds
+
+hive> Select * from customerdml where custno=4000001;
+OK
+4000001	Kristina	Chung	55	IT
+Time taken: 0.431 seconds, Fetched: 1 row(s)
+```
+5. Delete
+
+Select * from customerdml where custno in (4000001,4000002,4000003);
+
+delete from customerdml where custno= 4000002;
+
+Select * from customerdml where custno in (4000001,4000002,4000003);
+
+**tablelocation/delta_3/1 bucket (only deleted flag)**
+
+``` 
+hive> Select * from customerdml where custno in (4000001,4000002,4000003);
+OK
+4000001	Kristina	Chung	55	IT
+4000002	Paige	Chen	77	Teacher
+4000003	Sherri	Melton	34	Firefighter
+Time taken: 0.384 seconds, Fetched: 3 row(s)
+
+hive> delete from customerdml where custno= 4000002;
+Query ID = hduser_20220703170308_67e5c3ea-a37a-4c3e-bf14-4a61fb4f80d9
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 3
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0028, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0028/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0028
+Hadoop job information for Stage-1: number of mappers: 3; number of reducers: 3
+2022-07-03 17:03:52,138 Stage-1 map = 0%,  reduce = 0%
+2022-07-03 17:04:24,812 Stage-1 map = 22%,  reduce = 0%, Cumulative CPU 6.31 sec
+2022-07-03 17:04:26,119 Stage-1 map = 33%,  reduce = 0%, Cumulative CPU 12.68 sec
+2022-07-03 17:04:28,379 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 20.41 sec
+2022-07-03 17:04:53,256 Stage-1 map = 100%,  reduce = 33%, Cumulative CPU 24.94 sec
+2022-07-03 17:04:55,538 Stage-1 map = 100%,  reduce = 89%, Cumulative CPU 31.95 sec
+2022-07-03 17:04:56,646 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 34.13 sec
+MapReduce Total cumulative CPU time: 34 seconds 130 msec
+Ended Job = job_1656670722551_0028
+Loading data to table custdb.customerdml
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 3  Reduce: 3   Cumulative CPU: 34.13 sec   HDFS Read: 103801 HDFS Write: 711 SUCCESS
+Total MapReduce CPU Time Spent: 34 seconds 130 msec
+OK
+Time taken: 111.44 seconds
+
+hive> Select * from customerdml where custno in (4000001,4000002,4000003);
+OK
+4000001	Kristina	Chung	55	IT
+4000003	Sherri	Melton	34	Firefighter
+Time taken: 0.335 seconds, Fetched: 2 row(s)
+```
+
+**Admin’s Scope: schedule to run compaction in off peak time**
+
+alter table customerdml compact 'major';
+
+minor -> 20 deltas to 4 deltas
+
+major -> 20 or 4 delta to 1 delta (final)
+
+``` 
+hive> alter table customerdml compact 'major';
+Compaction enqueued with id 1
+OK
+Time taken: 0.137 seconds
+```
