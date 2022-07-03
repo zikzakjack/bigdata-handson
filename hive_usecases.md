@@ -13,46 +13,32 @@ queries etc.,
 
 ### Data Ingestion:
 
-Create a new Database & Table. Load the data
-
--- create a new Database
+**Create a new Database & Table to load Customer data**
 
 Create database custdb;
+
+use custdb;
+
+create table customer(custno string, firstname string, lastname string, age int,profession string)
+row format delimited 
+fields terminated by ',';
+
+load data local inpath '/home/hduser/hive/data/custs' into table customer;
 
 ``` 
 hive> Create database custdb;
 OK
 Time taken: 0.36 seconds
 
-```
-
-use custdb;
-
-``` 
 hive> use custdb;
 OK
 Time taken: 0.066 seconds
 
-```
-
--- create a new table
-
-create table customer(custno string, firstname string, lastname string, age int,profession string)
-row format delimited 
-fields terminated by ',';
-
-``` 
 hive> create table customer(custno string, firstname string, lastname string, age int,profession string)
     > row format delimited 
     > fields terminated by ',';
 OK
 Time taken: 0.335 seconds
-
-```
-
--- load the data. Ensure the data is copied to appropriate location in local 
-
-load data local inpath '/home/hduser/hive/data/custs' into table customer;
 
 ``` 
 hive> load data local inpath '/home/hduser/hive/data/custs' into table customer;
