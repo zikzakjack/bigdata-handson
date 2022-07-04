@@ -614,3 +614,408 @@ Compaction enqueued with id 1
 OK
 Time taken: 0.137 seconds
 ```
+
+## Benchmarking Hive using different file format storage:
+
+The purpose of doing benchmarking is to identify the best functionality or the feature to be used by
+iterating with different options, here we are going to create textfile, orc, avro and parquet format tables
+to check the performance between all these tables and the data size it occupied.
+
+### Textfile table
+
+create table staging_txn(txnno INT, txndate STRING, custno INT, amount DOUBLE, category STRING,
+product STRING, city STRING, state STRING, spendby STRING)
+row format delimited 
+fields terminated by ',' 
+lines terminated by '\n'
+stored as textfile;
+
+Note: the below load command is only possible for textfile table and we can’t use load command for any
+other serialized format like orc/parquet/avro/json.
+
+LOAD DATA LOCAL INPATH '/home/hduser/hive/data/txns' OVERWRITE INTO TABLE staging_txn;
+
+``` 
+hive> create table staging_txn(txnno INT, txndate STRING, custno INT, amount DOUBLE, category STRING,
+    > product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited 
+    > fields terminated by ',' 
+    > lines terminated by '\n'
+    > stored as textfile;
+OK
+Time taken: 0.418 seconds
+
+hive> LOAD DATA LOCAL INPATH '/home/hduser/hive/data/txns' OVERWRITE INTO TABLE staging_txn;
+Loading data to table custdb.staging_txn
+OK
+Time taken: 1.372 seconds
+
+```
+
+### Parquet file table:
+
+create table txn_parquet(txnno INT, txndate STRING, custno INT, amount DOUBLE, category STRING,
+product STRING, city STRING, state STRING, spendby STRING)
+row format delimited 
+fields terminated by ',' 
+lines terminated by '\n'
+stored as parquetfile;
+
+Insert into table txn_parquet select txnno, txndate, custno, amount, category, product, city, state, spendby from staging_txn;
+
+``` 
+hive> create table txn_parquet(txnno INT, txndate STRING, custno INT, amount DOUBLE,category STRING,
+    > product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited fields terminated by ',' lines terminated by '\n'
+    > stored as parquetfile;
+OK
+Time taken: 0.418 seconds
+
+hive> Insert into table txn_parquet select txnno,txndate,custno,amount,category, product,city,state,spendby
+    > from staging_txn;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704074015_55cc9ce6-d153-43ce-9b02-6187196bed64
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0034, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0034/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0034
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-04 07:41:10,603 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 07:41:35,632 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 14.97 sec
+MapReduce Total cumulative CPU time: 14 seconds 970 msec
+Ended Job = job_1656670722551_0034
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/custdb.db/txn_parquet/.hive-staging_hive_2022-07-04_07-40-15_307_1159523726538226546-1/-ext-10000
+Loading data to table custdb.txn_parquet
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 14.97 sec   HDFS Read: 8477417 HDFS Write: 1344545 SUCCESS
+Total MapReduce CPU Time Spent: 14 seconds 970 msec
+OK
+Time taken: 85.1 seconds
+
+hive> select count(*) from txn_parquet;
+OK
+95904
+Time taken: 0.429 seconds, Fetched: 1 row(s)
+
+
+```
+
+### Orc file table:
+
+create table txn_orc(txnno INT, txndate STRING, custno INT, amount DOUBLE, category
+STRING, product STRING, city STRING, state STRING, spendby STRING)
+row format delimited fields terminated by ',' lines terminated by '\n'
+stored as orcfile;
+
+Insert into table txn_orc select txnno,txndate,custno,amount,category, product,city,state,spendby from
+staging_txn;
+
+``` 
+
+hive> create table txn_orc(txnno INT, txndate STRING, custno INT, amount DOUBLE, category
+    > STRING, product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited fields terminated by ',' lines terminated by '\n'
+    > stored as orcfile;
+OK
+Time taken: 0.499 seconds
+
+hive> Insert into table txn_orc select txnno,txndate,custno,amount,category, product,city,state,spendby from
+    > staging_txn;
+Query ID = hduser_20220704075122_2263fd14-2e9c-4656-b83c-30f3d512dd9d
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0035, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0035/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0035
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-04 07:52:18,849 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 07:52:42,454 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 14.27 sec
+MapReduce Total cumulative CPU time: 14 seconds 270 msec
+Ended Job = job_1656670722551_0035
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/custdb.db/txn_orc/.hive-staging_hive_2022-07-04_07-51-22_453_1447259106034328135-1/-ext-10000
+Loading data to table custdb.txn_orc
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 14.27 sec   HDFS Read: 8477405 HDFS Write: 966191 SUCCESS
+Total MapReduce CPU Time Spent: 14 seconds 270 msec
+OK
+Time taken: 82.432 seconds
+
+hive> select count(*) from txn_orc;
+OK
+95904
+Time taken: 0.392 seconds, Fetched: 1 row(s)
+hive> 
+
+```
+### Avro file table:
+
+Note: As we have some issue in the avro-1.7.4.jar provided, we need to change it to the higher version
+avro-1.8.2.jar to run the below usecase. Download the higher version jar from the below link:
+https://repo1.maven.org/maven2/org/apache/avro/avro/1.8.2/avro-1.8.2.jar
+
+rm /usr/local/hadoop/share/hadoop/common/lib/avro-1.7.4.jar
+
+cp /home/hduser/Downloads/avro-1.8.2.jar /usr/local/hadoop/share/hadoop/common/lib/
+
+create table txn_avro(txnno INT, txndate STRING, custno INT, amount DOUBLE, category STRING, product STRING, city STRING, state STRING, spendby STRING)
+row format delimited
+fields terminated by ',' 
+lines terminated by '\n'
+stored as avrofile;
+
+Insert into table txn_avro select txnno,txndate,custno,amount,category, product,city,state,spendby from staging_txn;
+
+``` 
+hive> create table txn_avro(txnno INT, txndate STRING, custno INT, amount DOUBLE, category STRING, product STRING, city STRING, state STRING, spendby STRING)
+    > row format delimited
+    > fields terminated by ',' 
+    > lines terminated by '\n'
+    > stored as avrofile;
+OK
+Time taken: 0.826 seconds
+
+hive> Insert into table txn_avro select txnno,txndate,custno,amount,category, product,city,state,spendby from staging_txn;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704151228_010c5a8a-ad5a-4680-b5f2-641f082cedf7
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0036, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0036/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0036
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-04 15:13:25,638 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 15:13:49,249 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 14.48 sec
+MapReduce Total cumulative CPU time: 14 seconds 480 msec
+Ended Job = job_1656670722551_0036
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/custdb.db/txn_avro/.hive-staging_hive_2022-07-04_15-12-28_857_51634277877011944-1/-ext-10000
+Loading data to table custdb.txn_avro
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 14.48 sec   HDFS Read: 8477975 HDFS Write: 8467287 SUCCESS
+Total MapReduce CPU Time Spent: 14 seconds 480 msec
+OK
+Time taken: 83.396 seconds
+
+hive> select count(*) from txn_avro;
+OK
+95904
+Time taken: 0.395 seconds, Fetched: 1 row(s)
+
+```
+**Benchmarking:**
+
+select count(txnno),category from staging_txn group by category;
+
+select count(txnno),category from txn_orc group by category;
+
+select count(txnno),category from txn_parquet group by category;
+
+select count(txnno),category from txn_avro group by category;
+
+``` 
+hive> select count(txnno),category from staging_txn group by category;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704151630_2f6ddabf-3efb-4d33-9bc8-f674b334c151
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0037, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0037/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0037
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-04 15:17:15,672 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 15:17:31,203 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.27 sec
+2022-07-04 15:17:44,615 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 10.17 sec
+MapReduce Total cumulative CPU time: 10 seconds 170 msec
+Ended Job = job_1656670722551_0037
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 10.17 sec   HDFS Read: 8481587 HDFS Write: 539 SUCCESS
+Total MapReduce CPU Time Spent: 10 seconds 170 msec
+OK
+1933	Air Sports
+3140	Combat Sports
+792	Dancing
+14097	Exercise & Fitness
+6946	Games
+6261	Gymnastics
+5277	Indoor Games
+3789	Jumping
+5459	Outdoor Play Equipment
+16145	Outdoor Recreation
+1174	Puzzles
+3110	Racquet Sports
+11565	Team Sports
+10071	Water Sports
+6145	Winter Sports
+Time taken: 75.966 seconds, Fetched: 15 row(s)
+
+
+hive> select count(txnno),category from txn_orc group by category;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704151829_2ec75345-ea5c-45cb-adf3-1cba7d933dd1
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0038, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0038/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0038
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-04 15:19:12,577 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 15:19:29,268 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 6.68 sec
+2022-07-04 15:19:43,526 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 11.34 sec
+MapReduce Total cumulative CPU time: 11 seconds 340 msec
+Ended Job = job_1656670722551_0038
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 11.34 sec   HDFS Read: 72391 HDFS Write: 539 SUCCESS
+Total MapReduce CPU Time Spent: 11 seconds 340 msec
+OK
+1933	Air Sports
+3140	Combat Sports
+792	Dancing
+14097	Exercise & Fitness
+6946	Games
+6261	Gymnastics
+5277	Indoor Games
+3789	Jumping
+5459	Outdoor Play Equipment
+16145	Outdoor Recreation
+1174	Puzzles
+3110	Racquet Sports
+11565	Team Sports
+10071	Water Sports
+6145	Winter Sports
+Time taken: 75.24 seconds, Fetched: 15 row(s)
+
+hive> select count(txnno),category from txn_parquet group by category;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704152033_e5b0fb6b-616f-451e-872b-90f0c523e83c
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0039, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0039/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0039
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-04 15:21:18,814 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 15:21:36,007 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 7.8 sec
+2022-07-04 15:21:49,364 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 11.81 sec
+MapReduce Total cumulative CPU time: 11 seconds 810 msec
+Ended Job = job_1656670722551_0039
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 11.81 sec   HDFS Read: 443606 HDFS Write: 539 SUCCESS
+Total MapReduce CPU Time Spent: 11 seconds 810 msec
+OK
+1933	Air Sports
+3140	Combat Sports
+792	Dancing
+14097	Exercise & Fitness
+6946	Games
+6261	Gymnastics
+5277	Indoor Games
+3789	Jumping
+5459	Outdoor Play Equipment
+16145	Outdoor Recreation
+1174	Puzzles
+3110	Racquet Sports
+11565	Team Sports
+10071	Water Sports
+6145	Winter Sports
+Time taken: 76.79 seconds, Fetched: 15 row(s)
+
+
+hive> select count(txnno),category from txn_avro group by category;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704152227_c3636660-c3e0-44c4-b6ca-7edd6b3191d4
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0040, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0040/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0040
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-04 15:23:11,279 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 15:23:28,486 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 10.15 sec
+2022-07-04 15:23:41,989 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 14.34 sec
+MapReduce Total cumulative CPU time: 14 seconds 340 msec
+Ended Job = job_1656670722551_0040
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 14.34 sec   HDFS Read: 8485018 HDFS Write: 539 SUCCESS
+Total MapReduce CPU Time Spent: 14 seconds 340 msec
+OK
+1933	Air Sports
+3140	Combat Sports
+792	Dancing
+14097	Exercise & Fitness
+6946	Games
+6261	Gymnastics
+5277	Indoor Games
+3789	Jumping
+5459	Outdoor Play Equipment
+16145	Outdoor Recreation
+1174	Puzzles
+3110	Racquet Sports
+11565	Team Sports
+10071	Water Sports
+6145	Winter Sports
+Time taken: 75.978 seconds, Fetched: 15 row(s)
+hive> 
+
+
+```
+
+**Benchmarking Output:**
+Create a tabular column with format, HDFS of data, time for executing the above queries
+Serialization Format Size occupied in HDFS Execution time of the queries
+
+```
+[hduser@localhost ~]$ hadoop fs -du -s -h /user/hive/warehouse/custdb.db/staging_txn
+8.1 M  /user/hive/warehouse/custdb.db/staging_txn
+
+[hduser@localhost ~]$ hadoop fs -du -s -h /user/hive/warehouse/custdb.db/txn_orc
+943.5 K  /user/hive/warehouse/custdb.db/txn_orc
+
+[hduser@localhost ~]$ hadoop fs -du -s -h /user/hive/warehouse/custdb.db/txn_parquet
+1.3 M  /user/hive/warehouse/custdb.db/txn_parquet
+
+[hduser@localhost ~]$ hadoop fs -du -s -h /user/hive/warehouse/custdb.db/txn_avro
+8.1 M  /user/hive/warehouse/custdb.db/txn_avro
+
+```
+
+| Serialization Format | Size occupied in HDFS | Execution time of the queries |
+|----------------------|-----------------------|-------------------------------|
+| Textfile             | 8.1 M                 | 75.966 seconds                |
+| ORC                  | 943.5 K               | 75.24 seconds                 |
+| Parquet              | 1.3 M                 | 76.79 seconds                 |
+| Avro                 | 8.1 M                 | 75.978 seconds                |
+
+
