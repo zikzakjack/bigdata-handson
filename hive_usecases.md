@@ -1019,3 +1019,512 @@ Serialization Format Size occupied in HDFS Execution time of the queries
 | Avro                 | 8.1 M                 | 75.978 seconds                |
 
 
+# Usecase 2: CSV Serde
+
+Requirement:
+
+Source provider is providing structured data from a DB or FS source, but the data may contain the
+delimiter what we are going to use.
+
+Answer – By using string/varchar type defined for the whole data set we can handle this.
+
+DB -> sqoop import -> Hive CSVSerde -> 
+
+FS -> Textfile table load -> join both data and load to custpayments avro table -> create view to choose
+only few columns -> using the view export only the view columns into HDFS location -> Use the HDFS
+location as a source to export the data to a DB using sqoop export.
+
+1. Login to Mysql and execute the sql file to load the custpayments table:
+
+mysql> source /home/hduser/hiveusecases/custpayments_ORIG.sql
+
+``` 
+mysql> source /home/hduser/hiveusecases/custpayments_ORIG.sql
+Connection id:    450
+Current database: custdb
+Query OK, 0 rows affected, 1 warning (0.46 sec)
+Query OK, 0 rows affected (0.00 sec)
+Query OK, 1 row affected (0.12 sec)
+Database changed
+Query OK, 0 rows affected, 1 warning (0.02 sec)
+Query OK, 0 rows affected, 2 warnings (0.15 sec)
+Query OK, 122 rows affected (0.06 sec)
+Records: 122  Duplicates: 0  Warnings: 0
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| custdb             |
+| custpayments       |
+| information_schema |
+| metastore          |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+7 rows in set (0.00 sec)
+
+mysql> use custpayments
+Database changed
+
+
+mysql> show tables;
++------------------------+
+| Tables_in_custpayments |
++------------------------+
+| customers              |
++------------------------+
+1 row in set (0.01 sec)
+
+mysql> select count(*) from customers;
++----------+
+| count(*) |
++----------+
+|      122 |
++----------+
+1 row in set (0.01 sec)
+
+mysql> select * from customers limit 10;
++----------------+------------------------------+-----------------+------------------+-------------------+------------------------------+--------------+---------------+----------+------------+-----------+------------------------+-------------+
+| customerNumber | customerName                 | contactLastName | contactFirstName | phone             | addressLine1                 | addressLine2 | city          | state    | postalCode | country   | salesRepEmployeeNumber | creditLimit |
++----------------+------------------------------+-----------------+------------------+-------------------+------------------------------+--------------+---------------+----------+------------+-----------+------------------------+-------------+
+|            103 | Atelier graphique            | Schmitt         | Carine           | 40.32.2555        | 54, rue Royale               | NULL         | Nantes        | NULL     | 44000      | France    |                   1370 |    21000.00 |
+|            112 | Signal Gift Stores           | King            | Jean             | 7025551838        | 8489 Strong St.              | NULL         | Las Vegas     | NV       | 83030      | USA       |                   1166 |    71800.00 |
+|            114 | Australian Collectors, Co.   | Ferguson        | Peter            | 03 9520 4555      | 636 St Kilda Road            | Level 3      | Melbourne     | Victoria | 3004       | Australia |                   1611 |   117300.00 |
+|            119 | La Rochelle Gifts            | Labrune         | Janine           | 40.67.8555        | 67, rue des Cinquante Otages | NULL         | Nantes        | NULL     | 44000      | France    |                   1370 |   118200.00 |
+|            121 | Baane Mini Imports           | Bergulfsen      | Jonas            | 07-98 9555        | Erling Skakkes gate 78       | NULL         | Stavern       | NULL     | 4110       | Norway    |                   1504 |    81700.00 |
+|            124 | Mini Gifts Distributors Ltd. | Nelson          | Susan            | 4155551450        | 5677 Strong St.              | NULL         | San Rafael    | CA       | 97562      | USA       |                   1165 |   210500.00 |
+|            125 | Havel & Zbyszek Co           | Piestrzeniewicz | Zbyszek          | (26) 642-7555     | ul. Filtrowa 68              | NULL         | Warszawa      | NULL     | 01-012     | Poland    |                   NULL |        0.00 |
+|            128 | Blauer See Auto, Co.         | Keitel          | Roland           | +49 69 66 90 2555 | Lyonerstr. 34                | NULL         | Frankfurt     | NULL     | 60528      | Germany   |                   1504 |    59700.00 |
+|            129 | Mini Wheels Co.              | Murphy          | Julie            | 6505555787        | 5557 North Pendale Street    | NULL         | San Francisco | CA       | 94217      | USA       |                   1165 |    64600.00 |
+|            131 | Land of Toys Inc.            | Lee             | Kwai             | 2125557818        | 897 Long Airport Avenue      | NULL         | NYC           | NY       | 10022      | USA       |                   1323 |   114900.00 |
++----------------+------------------------------+-----------------+------------------+-------------------+------------------------------+--------------+---------------+----------+------------+-----------+------------------------+-------------+
+10 rows in set (0.00 sec)
+
+
+```
+
+2. Write sqoop command to import data from customerpayments table with 2 mappers, with enclosed
+by " (As we have ',' in the data itself we are importing in sqoop using --enclosed-by option into the
+location /user/hduser/custpayments).
+
+sqoop import \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/custpayments \
+    --username root \
+    --password Root123$ \
+    -table customers \
+    -m 2 \
+    --split-by customernumber \
+    --target-dir /user/hduser/custpayments \
+    --delete-target-dir \
+    --enclosed-by '\"' \
+    --escaped-by '\\';
+
+``` 
+[hduser@localhost ~]$ sqoop import \
+>     --driver com.mysql.cj.jdbc.Driver \
+>     --connect jdbc:mysql://localhost/custpayments \
+>     --username root \
+>     --password Root123$ \
+>     -table customers \
+>     -m 2 \
+>     --split-by customernumber \
+>     --target-dir /user/hduser/custpayments \
+>     --delete-target-dir \
+>     --enclosed-by '\"' \
+>     --escaped-by '\\';
+Warning: /usr/local/hbase does not exist! HBase imports will fail.
+Please set $HBASE_HOME to the root of your HBase installation.
+Warning: /usr/local/sqoop/../hcatalog does not exist! HCatalog jobs will fail.
+Please set $HCAT_HOME to the root of your HCatalog installation.
+Warning: /usr/local/sqoop/../accumulo does not exist! Accumulo imports will fail.
+Please set $ACCUMULO_HOME to the root of your Accumulo installation.
+Warning: /usr/local/sqoop/../zookeeper does not exist! Accumulo imports will fail.
+Please set $ZOOKEEPER_HOME to the root of your Zookeeper installation.
+22/07/04 18:05:43 INFO sqoop.Sqoop: Running Sqoop version: 1.4.6
+22/07/04 18:05:43 WARN tool.BaseSqoopTool: Setting your password on the command-line is insecure. Consider using -P instead.
+22/07/04 18:05:43 WARN sqoop.ConnFactory: Parameter --driver is set to an explicit driver however appropriate connection manager is not being set (via --connection-manager). Sqoop is going to fall back to org.apache.sqoop.manager.GenericJdbcManager. Please specify explicitly which connection manager should be used next time.
+22/07/04 18:05:43 INFO manager.SqlManager: Using default fetchSize of 1000
+22/07/04 18:05:43 INFO tool.CodeGenTool: Beginning code generation
+22/07/04 18:05:45 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/04 18:05:45 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/04 18:05:45 INFO orm.CompilationManager: HADOOP_MAPRED_HOME is /usr/local/hadoop
+Note: /tmp/sqoop-hduser/compile/463fce5d194a28881c4a6b50d5e47e39/customers.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+22/07/04 18:05:51 INFO orm.CompilationManager: Writing jar file: /tmp/sqoop-hduser/compile/463fce5d194a28881c4a6b50d5e47e39/customers.jar
+22/07/04 18:05:51 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/04 18:05:53 INFO tool.ImportTool: Destination directory /user/hduser/custpayments is not present, hence not deleting.
+22/07/04 18:05:53 INFO mapreduce.ImportJobBase: Beginning import of customers
+22/07/04 18:05:53 INFO Configuration.deprecation: mapred.jar is deprecated. Instead, use mapreduce.job.jar
+22/07/04 18:05:53 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/04 18:05:53 INFO Configuration.deprecation: mapred.map.tasks is deprecated. Instead, use mapreduce.job.maps
+22/07/04 18:05:53 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/04 18:05:59 INFO db.DBInputFormat: Using read commited transaction isolation
+22/07/04 18:05:59 INFO db.DataDrivenDBInputFormat: BoundingValsQuery: SELECT MIN(customernumber), MAX(customernumber) FROM customers
+22/07/04 18:06:00 INFO mapreduce.JobSubmitter: number of splits:2
+22/07/04 18:06:00 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1656670722551_0041
+22/07/04 18:06:01 INFO impl.YarnClientImpl: Submitted application application_1656670722551_0041
+22/07/04 18:06:01 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1656670722551_0041/
+22/07/04 18:06:01 INFO mapreduce.Job: Running job: job_1656670722551_0041
+22/07/04 18:06:16 INFO mapreduce.Job: Job job_1656670722551_0041 running in uber mode : false
+22/07/04 18:06:16 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/04 18:06:33 INFO mapreduce.Job:  map 50% reduce 0%
+22/07/04 18:06:34 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/04 18:06:34 INFO mapreduce.Job: Job job_1656670722551_0041 completed successfully
+22/07/04 18:06:35 INFO mapreduce.Job: Counters: 30
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=267950
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=245
+		HDFS: Number of bytes written=17553
+		HDFS: Number of read operations=8
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=4
+	Job Counters 
+		Launched map tasks=2
+		Other local map tasks=2
+		Total time spent by all maps in occupied slots (ms)=30340
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=30340
+		Total vcore-seconds taken by all map tasks=30340
+		Total megabyte-seconds taken by all map tasks=31068160
+	Map-Reduce Framework
+		Map input records=122
+		Map output records=122
+		Input split bytes=245
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=659
+		CPU time spent (ms)=7540
+		Physical memory (bytes) snapshot=339845120
+		Virtual memory (bytes) snapshot=4229988352
+		Total committed heap usage (bytes)=221249536
+	File Input Format Counters 
+		Bytes Read=0
+	File Output Format Counters 
+		Bytes Written=17553
+22/07/04 18:06:35 INFO mapreduce.ImportJobBase: Transferred 17.1416 KB in 41.7592 seconds (420.3382 bytes/sec)
+22/07/04 18:06:35 INFO mapreduce.ImportJobBase: Retrieved 122 records.
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/custpayments
+Found 3 items
+-rw-r--r--   1 hduser hadoop          0 2022-07-04 18:06 /user/hduser/custpayments/_SUCCESS
+-rw-r--r--   1 hduser hadoop       8962 2022-07-04 18:06 /user/hduser/custpayments/part-m-00000
+-rw-r--r--   1 hduser hadoop       8591 2022-07-04 18:06 /user/hduser/custpayments/part-m-00001
+
+[hduser@localhost ~]$ hadoop fs -du -s -h /user/hduser/custpayments
+17.1 K  /user/hduser/custpayments
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/custpayments/* | head
+"103","Atelier graphique","Schmitt","Carine ","40.32.2555","54, rue Royale","null","Nantes","null","44000","France","1370","21000.00"
+"112","Signal Gift Stores","King","Jean","7025551838","8489 Strong St.","null","Las Vegas","NV","83030","USA","1166","71800.00"
+"114","Australian Collectors, Co.","Ferguson","Peter","03 9520 4555","636 St Kilda Road","Level 3","Melbourne","Victoria","3004","Australia","1611","117300.00"
+"119","La Rochelle Gifts","Labrune","Janine ","40.67.8555","67, rue des Cinquante Otages","null","Nantes","null","44000","France","1370","118200.00"
+"121","Baane Mini Imports","Bergulfsen","Jonas ","07-98 9555","Erling Skakkes gate 78","null","Stavern","null","4110","Norway","1504","81700.00"
+"124","Mini Gifts Distributors Ltd.","Nelson","Susan","4155551450","5677 Strong St.","null","San Rafael","CA","97562","USA","1165","210500.00"
+"125","Havel & Zbyszek Co","Piestrzeniewicz","Zbyszek ","(26) 642-7555","ul. Filtrowa 68","null","Warszawa","null","01-012","Poland","null","0.00"
+"128","Blauer See Auto, Co.","Keitel","Roland","+49 69 66 90 2555","Lyonerstr. 34","null","Frankfurt","null","60528","Germany","1504","59700.00"
+"129","Mini Wheels Co.","Murphy","Julie","6505555787","5557 North Pendale Street","null","San Francisco","CA","94217","USA","1165","64600.00"
+"131","Land of Toys Inc.","Lee","Kwai","2125557818","897 Long Airport Avenue","null","NYC","NY","10022","USA","1323","114900.00"
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/custpayments/* | wc -l
+122
+
+```
+
+3. Create a hive external table and load the sqoop imported data to the hive table called custpayments.
+As we have ',' in the data itself we are using quoted char option below with the csv serde option as given
+below as example, create the table with all columns.
+
+create external table custmaster (customerNumber INT, customerName STRING, contactLastName STRING, contactFirstName STRING, phone STRING, addressLine1 STRING, addressLine2 STRING, city STRING, state STRING, postalCode STRING, country STRING, salesRepEmployeeNumber  INT, creditLimit DOUBLE)
+    ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+    WITH SERDEPROPERTIES (
+        "separatorChar" = ",",
+        "quoteChar" = "\"")
+    LOCATION '/user/hduser/custpayments/';
+
+``` 
+hive> create external table custmaster (customerNumber INT, customerName STRING, contactLastName STRING, contactFirstName STRING, phone STRING, addressLine1 STRING, addressLine2 STRING, city STRING, state STRING, postalCode STRING, country STRING, salesRepEmployeeNumber  INT, creditLimit DOUBLE)
+    >     ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+    >     WITH SERDEPROPERTIES (
+    >         "separatorChar" = ",",
+    >         "quoteChar" = "\"")
+    >     LOCATION '/user/hduser/custpayments/';
+OK
+Time taken: 0.229 seconds
+
+hive> describe custmaster;
+OK
+customernumber      	string              	from deserializer   
+customername        	string              	from deserializer   
+contactlastname     	string              	from deserializer   
+contactfirstname    	string              	from deserializer   
+phone               	string              	from deserializer   
+addressline1        	string              	from deserializer   
+addressline2        	string              	from deserializer   
+city                	string              	from deserializer   
+state               	string              	from deserializer   
+postalcode          	string              	from deserializer   
+country             	string              	from deserializer   
+salesrepemployeenumber	string              	from deserializer   
+creditlimit         	string              	from deserializer   
+Time taken: 0.102 seconds, Fetched: 13 row(s)
+
+hive> show create table custmaster;
+OK
+CREATE EXTERNAL TABLE `custmaster`(
+  `customernumber` string COMMENT 'from deserializer', 
+  `customername` string COMMENT 'from deserializer', 
+  `contactlastname` string COMMENT 'from deserializer', 
+  `contactfirstname` string COMMENT 'from deserializer', 
+  `phone` string COMMENT 'from deserializer', 
+  `addressline1` string COMMENT 'from deserializer', 
+  `addressline2` string COMMENT 'from deserializer', 
+  `city` string COMMENT 'from deserializer', 
+  `state` string COMMENT 'from deserializer', 
+  `postalcode` string COMMENT 'from deserializer', 
+  `country` string COMMENT 'from deserializer', 
+  `salesrepemployeenumber` string COMMENT 'from deserializer', 
+  `creditlimit` string COMMENT 'from deserializer')
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.OpenCSVSerde' 
+WITH SERDEPROPERTIES ( 
+  'quoteChar'='"', 
+  'separatorChar'=',') 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+  'hdfs://localhost:54310/user/hduser/custpayments'
+TBLPROPERTIES (
+  'transient_lastDdlTime'='1656945885')
+Time taken: 0.118 seconds, Fetched: 27 row(s)
+hive> 
+
+hive> select count(*) from custmaster;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704201500_7647770d-9952-406a-8431-f533fc8e4b58
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0045, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0045/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0045
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-04 20:15:51,858 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 20:16:07,566 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 3.63 sec
+2022-07-04 20:16:20,988 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 9.32 sec
+MapReduce Total cumulative CPU time: 9 seconds 320 msec
+Ended Job = job_1656670722551_0045
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 9.32 sec   HDFS Read: 27059 HDFS Write: 103 SUCCESS
+Total MapReduce CPU Time Spent: 9 seconds 320 msec
+OK
+122
+Time taken: 82.706 seconds, Fetched: 1 row(s)
+
+hive> select * from custmaster limit 10;
+OK
+103	Atelier graphique	Schmitt	Carine 	40.32.2555	54, rue Royale	null	Nantes	null	44000	France	1370	21000.00
+112	Signal Gift Stores	King	Jean	7025551838	8489 Strong St.	null	Las Vegas	NV	83030	USA	1166	71800.00
+114	Australian Collectors, Co.	Ferguson	Peter	03 9520 4555	636 St Kilda Road	Level 3	Melbourne	Victoria	3004	Australia	1611117300.00
+119	La Rochelle Gifts	Labrune	Janine 	40.67.8555	67, rue des Cinquante Otages	null	Nantes	null	44000	France	1370	118200.00
+121	Baane Mini Imports	Bergulfsen	Jonas 	07-98 9555	Erling Skakkes gate 78	null	Stavern	null	4110	Norway	1504	81700.00
+124	Mini Gifts Distributors Ltd.	Nelson	Susan	4155551450	5677 Strong St.	null	San Rafael	CA	97562	USA	1165	210500.00
+125	Havel & Zbyszek Co	Piestrzeniewicz	Zbyszek 	(26) 642-7555	ul. Filtrowa 68	null	Warszawa	null	01-012	Poland	null	0.00
+128	Blauer See Auto, Co.	Keitel	Roland	+49 69 66 90 2555	Lyonerstr. 34	null	Frankfurt	null	60528	Germany	1504	59700.00
+129	Mini Wheels Co.	Murphy	Julie	6505555787	5557 North Pendale Street	null	San Francisco	CA	94217	USA	1165	64600.00
+131	Land of Toys Inc.	Lee	Kwai	2125557818	897 Long Airport Avenue	null	NYC	NY	10022	USA	1323	114900.00
+Time taken: 0.327 seconds, Fetched: 10 row(s)
+
+```
+
+4. Copy the payments.txt into hdfs location /user/hduser/paymentsdata/ and Create an external table
+namely payments with customernumber, checknumber, paymentdate, amount columns to point the imported payments data.
+
+create external table payments (customernumber INT, checknumber STRING, paymentdate DATE, amount DOUBLE) 
+row format delimited  
+fields terminated by ',' 
+stored as textfile 
+location '/user/hduser/paymentsdata';
+
+``` 
+
+[hduser@localhost ~]$ hadoop fs -mkdir -p /user/hduser/paymentsdata/
+
+[hduser@localhost ~]$ hadoop fs -put -f /home/hduser/hiveusecases/payments.txt /user/hduser/paymentsdata/
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/paymentsdata/* | wc -l
+272
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/paymentsdata/* | head
+103,HQ336336,2016-10-19,6066.78
+103,JM555205,2016-10-05,14571.44
+103,OM314933,2016-10-18,1676.14
+112,BO864823,2016-10-17,14191.12
+112,HQ55022,2016-10-06,32641.98
+112,ND748579,2016-10-20,33347.88
+114,GG31455,2016-10-20,45864.03
+114,MA765515,2016-10-15,82261.22
+114,NP603840,2016-10-31,7565.08
+114,NR27552,2016-10-10,44894.74
+
+hive> create external table payments (customernumber INT, checknumber STRING, paymentdate DATE, amount DOUBLE) 
+    > row format delimited  
+    > fields terminated by ',' 
+    > stored as textfile 
+    > location '/user/hduser/paymentsdata';
+OK
+Time taken: 0.218 seconds
+
+hive> select count(*) from payments;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704184643_d67e8e75-9df2-42b9-a818-3950bec88432
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0043, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0043/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0043
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-04 18:47:31,993 Stage-1 map = 0%,  reduce = 0%
+2022-07-04 18:47:47,624 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 3.48 sec
+2022-07-04 18:48:02,142 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 8.45 sec
+MapReduce Total cumulative CPU time: 8 seconds 450 msec
+Ended Job = job_1656670722551_0043
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 8.45 sec   HDFS Read: 17613 HDFS Write: 103 SUCCESS
+Total MapReduce CPU Time Spent: 8 seconds 450 msec
+OK
+273
+Time taken: 81.176 seconds, Fetched: 1 row(s)
+
+hive> select * from payments limit 10;
+OK
+103	HQ336336	2016-10-19	6066.78
+103	JM555205	2016-10-05	14571.44
+103	OM314933	2016-10-18	1676.14
+112	BO864823	2016-10-17	14191.12
+112	HQ55022	2016-10-06	32641.98
+112	ND748579	2016-10-20	33347.88
+114	GG31455	2016-10-20	45864.03
+114	MA765515	2016-10-15	82261.22
+114	NP603840	2016-10-31	7565.08
+114	NR27552	2016-10-10	44894.74
+Time taken: 0.336 seconds, Fetched: 10 row(s)
+
+```
+
+5. Create an external table called cust_payments in avro format and load data by doing inner join of
+custmaster and payments tables, using insert select customernumber, contactfirstname, contactlastname, 
+phone, creditlimit from custmaster and paymentdate, amount columns from payments table
+
+**Csv serde table join payments external table -> cust_payments (avro)**
+
+-- Create an external table called cust_payments in avro format
+
+create table cust_payments
+(customernumber INT, contactfirstname STRING, contactlastname STRING, phone STRING, 
+creditlimit DOUBLE, paymentdate DATE, amount DOUBLE) 
+row format delimited 
+fields terminated by ',' 
+lines terminated by '\n' 
+stored as avrofile;
+
+-- load data by doing inner join of custmaster and payments tables
+
+Insert into table cust_payments 
+select c.customernumber, c.contactfirstname, c.contactlastname, c.phone, c.creditlimit, p.paymentdate, p.amount  
+from custmaster c JOIN payments p on (c.customernumber = p.customernumber);
+
+``` 
+hive> 
+    > create table cust_payments
+    > (customernumber INT, contactfirstname STRING, contactlastname STRING, phone STRING, 
+    > creditlimit DOUBLE, paymentdate DATE, amount DOUBLE) 
+    > row format delimited 
+    > fields terminated by ',' 
+    > lines terminated by '\n' 
+    > stored as avrofile;
+OK
+Time taken: 0.484 seconds
+
+hive> 
+    > Insert into table cust_payments 
+    > select c.customernumber, c.contactfirstname, c.contactlastname, c.phone, c.creditlimit, p.paymentdate, p.amount  
+    > from custmaster c JOIN payments p on (c.customernumber = p.customernumber);
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220704203926_05ac6e4f-29a9-4f97-94bd-e9efd3bb33f0
+Total jobs = 1
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/local/hive/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+2022-07-04 20:39:47	Starting to launch local task to process map join;	maximum memory = 477626368
+2022-07-04 20:39:51	Dump the side-table for tag: 1 with group count: 98 into file: file:/tmp/hduser/8030768b-c35d-4a74-8aac-49bb092f17a7/hive_2022-07-04_20-39-26_037_2432313088014818381-1/-local-10002/HashTable-Stage-4/MapJoin-mapfile31--.hashtable
+2022-07-04 20:39:51	Uploaded 1 File to: file:/tmp/hduser/8030768b-c35d-4a74-8aac-49bb092f17a7/hive_2022-07-04_20-39-26_037_2432313088014818381-1/-local-10002/HashTable-Stage-4/MapJoin-mapfile31--.hashtable (6719 bytes)
+2022-07-04 20:39:51	End of local task; Time Taken: 3.884 sec.
+Execution completed successfully
+MapredLocal task succeeded
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0049, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0049/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0049
+Hadoop job information for Stage-4: number of mappers: 1; number of reducers: 0
+2022-07-04 20:40:40,921 Stage-4 map = 0%,  reduce = 0%
+2022-07-04 20:40:57,669 Stage-4 map = 100%,  reduce = 0%, Cumulative CPU 7.25 sec
+MapReduce Total cumulative CPU time: 7 seconds 250 msec
+Ended Job = job_1656670722551_0049
+Loading data to table custdb.cust_payments
+MapReduce Jobs Launched: 
+Stage-Stage-4: Map: 1   Cumulative CPU: 7.25 sec   HDFS Read: 27520 HDFS Write: 15729 SUCCESS
+Total MapReduce CPU Time Spent: 7 seconds 250 msec
+OK
+Time taken: 95.745 seconds
+
+hive> select count(*) from cust_payments;
+OK
+273
+Time taken: 0.502 seconds, Fetched: 1 row(s)
+
+```
+
+6. Create a view called custpayments_vw to only display customernumber,creditlimit,paymentdate and
+amount selected from cust_payments.
+
+
+What is view? - View is a stored Query.
+View Benefits:
+* View doesn’t contains data, rather it stores only query.
+* Reducing the complexity of writing queries, because view stores complex queries.
+* Performance benefit – when create the view apply the performance accordingly (eg: use
+   partition column in the filter)
+* Security – Enable only the columns/rows to the intended users.
+
+
+7. Extract only customernumber, creditlimit,paymentdate and amount columns either using the above view/cust_payments table into hdfs location /user/hduser/custpaymentsexport with '|' delimiter.
+
+Note: Achieve the above scenario using insert overwrite directory option or one more option to achieve
+this, try that out and let me know what is that?
+
+8. Export the data from the /user/hduser/custpaymentsexport location to mysql table called
+cust_payments using sqoop export with staging table option using records per statement 100 and
+mappers 3.
