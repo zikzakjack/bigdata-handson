@@ -1507,10 +1507,6 @@ Time taken: 0.502 seconds, Fetched: 1 row(s)
 
 ```
 
-6. Create a view called custpayments_vw to only display customernumber,creditlimit,paymentdate and
-amount selected from cust_payments.
-
-
 What is view? - View is a stored Query.
 View Benefits:
 * View doesn’t contains data, rather it stores only query.
@@ -1519,12 +1515,319 @@ View Benefits:
    partition column in the filter)
 * Security – Enable only the columns/rows to the intended users.
 
+6. Create a view called custpayments_vw to only display customernumber,creditlimit,paymentdate and
+amount selected from cust_payments.
 
-7. Extract only customernumber, creditlimit,paymentdate and amount columns either using the above view/cust_payments table into hdfs location /user/hduser/custpaymentsexport with '|' delimiter.
+Create view if not exists custpayments_vw AS select customernumber, creditlimit, paymentdate, amount from cust_payments;
+
+``` 
+hive> Create view if not exists custpayments_vw AS select customernumber, creditlimit, paymentdate, amount from cust_payments;
+OK
+Time taken: 1.089 seconds
+hive> select count(*) from custpayments_vw;
+OK
+273
+Time taken: 0.557 seconds, Fetched: 1 row(s)
+hive> select * from custpayments_vw limit 5;
+OK
+103	21000.0	2016-10-19	6066.78
+103	21000.0	2016-10-05	14571.44
+103	21000.0	2016-10-18	1676.14
+112	71800.0	2016-10-17	14191.12
+112	71800.0	2016-10-06	32641.98
+Time taken: 0.399 seconds, Fetched: 5 row(s)
+
+```
+
+7. Extract only customernumber, creditlimit,paymentdate and amount columns either using the above view/cust_payments table into 
+hdfs location /user/hduser/custpaymentsexport with '|' delimiter.
 
 Note: Achieve the above scenario using insert overwrite directory option or one more option to achieve
 this, try that out and let me know what is that?
 
+**Option 1:**
+
+insert overwrite 
+directory '/user/hduser/custpaymentsexport' 
+row format delimited 
+fields terminated by '|' 
+select * from custpayments_vw;
+
+hadoop fs -text /user/hduser/custpaymentsexport/* | head 
+
+``` 
+hive> insert overwrite 
+    > directory '/user/hduser/custpaymentsexport' 
+    > row format delimited 
+    > fields terminated by '|' 
+    > select * from custpayments_vw;
+Query ID = hduser_20220705075348_c123cc23-2d02-4e65-8669-f6cadffe6146
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0050, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0050/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0050
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 07:55:13,235 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 07:55:36,765 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 7.2 sec
+MapReduce Total cumulative CPU time: 7 seconds 200 msec
+Ended Job = job_1656670722551_0050
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/custpaymentsexport/.hive-staging_hive_2022-07-05_07-53-48_721_4168516693548010840-1/-ext-10000
+Moving data to directory /user/hduser/custpaymentsexport
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 7.2 sec   HDFS Read: 28548 HDFS Write: 8755 SUCCESS
+Total MapReduce CPU Time Spent: 7 seconds 200 msec
+OK
+Time taken: 109.287 seconds
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/custpaymentsexport/* | head 
+103|21000.0|2016-10-19|6066.78
+103|21000.0|2016-10-05|14571.44
+103|21000.0|2016-10-18|1676.14
+112|71800.0|2016-10-17|14191.12
+112|71800.0|2016-10-06|32641.98
+112|71800.0|2016-10-20|33347.88
+114|117300.0|2016-10-20|45864.03
+114|117300.0|2016-10-15|82261.22
+114|117300.0|2016-10-31|7565.08
+114|117300.0|2016-10-10|44894.74
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/custpaymentsexport/* | wc -l
+273
+
+```
+
+**Option 2:** : CTAS
+
+We can create external table with row format delimited as | and location as /user/hduser/custpaymentsexport.. then insert select from cust_payments table.. finally drop this external table after insert select
+
+CREATE TABLE custpaymentsexport 
+    row format delimited 
+    fields terminated by '|' 
+    STORED AS TEXTFILE 
+    LOCATION '/user/hduser/custpaymentsexport1'
+AS select * from custpayments_vw;
+
+
+```  
+hive> 
+    > CREATE TABLE custpaymentsexport 
+    >     row format delimited 
+    >     fields terminated by '|' 
+    >     STORED AS TEXTFILE 
+    >     LOCATION '/user/hduser/custpaymentsexport1'
+    > AS select * from custpayments_vw;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220705081421_b6b2a6b7-6ffe-4e6a-beb3-47d2198dffd8
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0051, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0051/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0051
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 08:15:19,039 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 08:15:43,719 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 7.34 sec
+MapReduce Total cumulative CPU time: 7 seconds 340 msec
+Ended Job = job_1656670722551_0051
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/custpaymentsexport1/.hive-staging_hive_2022-07-05_08-14-21_037_5448376573597506499-1/-ext-10002
+Moving data to directory /user/hduser/custpaymentsexport1
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 7.34 sec   HDFS Read: 28739 HDFS Write: 8839 SUCCESS
+Total MapReduce CPU Time Spent: 7 seconds 340 msec
+OK
+Time taken: 87.512 seconds
+
+hive> select count(*) from custpaymentsexport;
+OK
+273
+Time taken: 0.356 seconds, Fetched: 1 row(s)
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/custpaymentsexport1/* | head 
+103|21000.0|2016-10-19|6066.78
+103|21000.0|2016-10-05|14571.44
+103|21000.0|2016-10-18|1676.14
+112|71800.0|2016-10-17|14191.12
+112|71800.0|2016-10-06|32641.98
+112|71800.0|2016-10-20|33347.88
+114|117300.0|2016-10-20|45864.03
+114|117300.0|2016-10-15|82261.22
+114|117300.0|2016-10-31|7565.08
+114|117300.0|2016-10-10|44894.74
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/custpaymentsexport1/* | wc -l
+273
+
+```
+
 8. Export the data from the /user/hduser/custpaymentsexport location to mysql table called
 cust_payments using sqoop export with staging table option using records per statement 100 and
 mappers 3.
+
+sqoop export --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex 
+-m 1 --table sales_sgiri --export-dir /apps/hive/warehouse/sg.db/sales_test --input-fields-terminated-by ',' 
+--username sqoopuser --password NHkkP876rp;
+
+sqoop export \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/custpayments \
+    --username root \
+    --password Root123$ \
+    --export-dir /user/hduser/custpaymentsexport \
+    --input-fields-terminated-by '|' \
+    -m 3 \
+    --table cust_payments ;
+
+use custpayments;
+
+CREATE TABLE cust_payments (
+  customerNumber int(11),
+  creditLimit decimal(10,2),
+  paymentdate date,
+  amount decimal(10,2)
+);
+
+show tables;
+
+select * from cust_payments;
+
+``` 
+
+mysql> use custpayments;
+Database changed
+mysql> CREATE TABLE cust_payments (
+    ->   customerNumber int(11),
+    ->   creditLimit decimal(10,2),
+    ->   paymentdate date,
+    ->   amount decimal(10,2)
+    -> );
+Query OK, 0 rows affected, 1 warning (0.08 sec)
+
+mysql> show tables;
++------------------------+
+| Tables_in_custpayments |
++------------------------+
+| cust_payments          |
+| customers              |
++------------------------+
+2 rows in set (0.01 sec)
+
+[hduser@localhost ~]$ sqoop export \
+>     --driver com.mysql.cj.jdbc.Driver \
+>     --connect jdbc:mysql://localhost/custpayments \
+>     --username root \
+>     --password Root123$ \
+>     --export-dir /user/hduser/custpaymentsexport \
+>     --input-fields-terminated-by '|' \
+>     -m 3 \
+>     --table cust_payments ;
+Warning: /usr/local/hbase does not exist! HBase imports will fail.
+Please set $HBASE_HOME to the root of your HBase installation.
+Warning: /usr/local/sqoop/../hcatalog does not exist! HCatalog jobs will fail.
+Please set $HCAT_HOME to the root of your HCatalog installation.
+Warning: /usr/local/sqoop/../accumulo does not exist! Accumulo imports will fail.
+Please set $ACCUMULO_HOME to the root of your Accumulo installation.
+Warning: /usr/local/sqoop/../zookeeper does not exist! Accumulo imports will fail.
+Please set $ZOOKEEPER_HOME to the root of your Zookeeper installation.
+22/07/05 08:53:56 INFO sqoop.Sqoop: Running Sqoop version: 1.4.6
+22/07/05 08:53:56 WARN tool.BaseSqoopTool: Setting your password on the command-line is insecure. Consider using -P instead.
+22/07/05 08:53:56 WARN sqoop.ConnFactory: Parameter --driver is set to an explicit driver however appropriate connection manager is not being set (via --connection-manager). Sqoop is going to fall back to org.apache.sqoop.manager.GenericJdbcManager. Please specify explicitly which connection manager should be used next time.
+22/07/05 08:53:56 INFO manager.SqlManager: Using default fetchSize of 1000
+22/07/05 08:53:56 INFO tool.CodeGenTool: Beginning code generation
+22/07/05 08:53:59 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM cust_payments AS t WHERE 1=0
+22/07/05 08:53:59 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM cust_payments AS t WHERE 1=0
+22/07/05 08:53:59 INFO orm.CompilationManager: HADOOP_MAPRED_HOME is /usr/local/hadoop
+Note: /tmp/sqoop-hduser/compile/530bba55ebf182c03645668a5dc149f3/cust_payments.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+22/07/05 08:54:04 INFO orm.CompilationManager: Writing jar file: /tmp/sqoop-hduser/compile/530bba55ebf182c03645668a5dc149f3/cust_payments.jar
+22/07/05 08:54:04 INFO mapreduce.ExportJobBase: Beginning export of cust_payments
+22/07/05 08:54:06 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/05 08:54:06 INFO Configuration.deprecation: mapred.jar is deprecated. Instead, use mapreduce.job.jar
+22/07/05 08:54:08 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM cust_payments AS t WHERE 1=0
+22/07/05 08:54:08 INFO Configuration.deprecation: mapred.reduce.tasks.speculative.execution is deprecated. Instead, use mapreduce.reduce.speculative
+22/07/05 08:54:08 INFO Configuration.deprecation: mapred.map.tasks.speculative.execution is deprecated. Instead, use mapreduce.map.speculative
+22/07/05 08:54:08 INFO Configuration.deprecation: mapred.map.tasks is deprecated. Instead, use mapreduce.job.maps
+22/07/05 08:54:09 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/05 08:54:17 INFO input.FileInputFormat: Total input paths to process : 1
+22/07/05 08:54:17 INFO input.FileInputFormat: Total input paths to process : 1
+22/07/05 08:54:17 INFO mapreduce.JobSubmitter: number of splits:3
+22/07/05 08:54:17 INFO Configuration.deprecation: mapred.map.tasks.speculative.execution is deprecated. Instead, use mapreduce.map.speculative
+22/07/05 08:54:18 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1656670722551_0053
+22/07/05 08:54:19 INFO impl.YarnClientImpl: Submitted application application_1656670722551_0053
+22/07/05 08:54:19 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1656670722551_0053/
+22/07/05 08:54:19 INFO mapreduce.Job: Running job: job_1656670722551_0053
+22/07/05 08:54:35 INFO mapreduce.Job: Job job_1656670722551_0053 running in uber mode : false
+22/07/05 08:54:35 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/05 08:55:02 INFO mapreduce.Job:  map 33% reduce 0%
+22/07/05 08:55:05 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/05 08:55:06 INFO mapreduce.Job: Job job_1656670722551_0053 completed successfully
+22/07/05 08:55:06 INFO mapreduce.Job: Counters: 30
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=400818
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=13091
+		HDFS: Number of bytes written=0
+		HDFS: Number of read operations=15
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=0
+	Job Counters 
+		Launched map tasks=3
+		Data-local map tasks=3
+		Total time spent by all maps in occupied slots (ms)=76592
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=76592
+		Total vcore-seconds taken by all map tasks=76592
+		Total megabyte-seconds taken by all map tasks=78430208
+	Map-Reduce Framework
+		Map input records=273
+		Map output records=273
+		Input split bytes=508
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=1286
+		CPU time spent (ms)=10940
+		Physical memory (bytes) snapshot=510136320
+		Virtual memory (bytes) snapshot=6335700992
+		Total committed heap usage (bytes)=358612992
+	File Input Format Counters 
+		Bytes Read=0
+	File Output Format Counters 
+		Bytes Written=0
+22/07/05 08:55:06 INFO mapreduce.ExportJobBase: Transferred 12.7842 KB in 57.5763 seconds (227.3677 bytes/sec)
+22/07/05 08:55:06 INFO mapreduce.ExportJobBase: Exported 273 records.
+
+mysql> select count(*) from cust_payments;
++----------+
+| count(*) |
++----------+
+|      273 |
++----------+
+1 row in set (0.01 sec)
+
+mysql> select * from cust_payments limit 10;
++----------------+-------------+-------------+----------+
+| customerNumber | creditLimit | paymentdate | amount   |
++----------------+-------------+-------------+----------+
+|            181 |    76400.00 | 2016-10-16  | 44400.50 |
+|            186 |    96500.00 | 2016-10-10  | 23602.90 |
+|            186 |    96500.00 | 2016-10-27  | 37602.48 |
+|            186 |    96500.00 | 2016-10-21  | 34341.08 |
+|            187 |   136800.00 | 2016-10-03  | 52825.29 |
+|            187 |   136800.00 | 2016-10-08  | 47159.11 |
+|            187 |   136800.00 | 2016-10-27  | 48425.69 |
+|            189 |    69400.00 | 2016-10-03  | 17359.53 |
+|            189 |    69400.00 | 2016-10-01  | 32538.74 |
+|            198 |    23000.00 | 2016-10-06  |  9658.74 |
++----------------+-------------+-------------+----------+
+10 rows in set (0.00 sec)
+
+```
