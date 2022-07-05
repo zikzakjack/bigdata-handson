@@ -2652,3 +2652,4 @@ Time taken: 0.278 seconds, Fetched: 4 row(s)
 
 ```
 
+# Use Case 4: Hive Schema Evolution (Hive Dynamic schema):
