@@ -3063,7 +3063,7 @@ hive> select customernumber, customername, contactlastname, contactfirstname, ad
     > customeravro where customernumber=496;
 OK
 496	Kelly's Gift Shop	Snowden	Tony	Arenales 1938 3'A'	NULL	Auckland  	NULL	NULL	New Zealand	1612	110000.00	9833339123
-Time taken: 0.265 seconds, Fetched: 2 row(s)
+Time taken: 0.265 seconds, Fetched: 1 row(s)
 
 ```
 
