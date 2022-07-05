@@ -1669,10 +1669,6 @@ Time taken: 0.356 seconds, Fetched: 1 row(s)
 cust_payments using sqoop export with staging table option using records per statement 100 and
 mappers 3.
 
-sqoop export --connect jdbc:mysql://cxln2.c.thelab-240901.internal/sqoopex 
--m 1 --table sales_sgiri --export-dir /apps/hive/warehouse/sg.db/sales_test --input-fields-terminated-by ',' 
---username sqoopuser --password NHkkP876rp;
-
 sqoop export \
     --driver com.mysql.cj.jdbc.Driver \
     --connect jdbc:mysql://localhost/custpayments \
@@ -1874,6 +1870,8 @@ managed table conver few columns into JSON format.
 1. Download the [resources/data/hiveusecases/cust_fixed_width.txt](resources/data/hiveusecases/cust_fixed_width.txt) fixed data into /home/hduser/cust_fixed_width.txt
 
 ``` 
+[hduser@localhost ~]$ ls -l /home/hduser/cust_fixed_width.txt
+-rw-------. 1 hduser hduser 178 Jul  5 12:24 /home/hduser/cust_fixed_width.txt
 
 ```
 
@@ -1883,14 +1881,33 @@ varchar(43).
 Create table cust_fixed_raw(rawdata char(43));
 
 ``` 
+hive> Create table cust_fixed_raw(rawdata char(43));
+OK
+Time taken: 0.28 seconds
+
+hive> select * from cust_fixed_raw;
+OK
+Time taken: 0.484 seconds
 
 ```
 
 3. Load the data
 
-load data local inpath '/home/hduser/cust_fixed_width.txt' table cust_fixed_raw
+LOAD DATA LOCAL INPATH '/home/hduser/cust_fixed_width.txt' INTO TABLE cust_fixed_raw;
 
 ``` 
+hive> LOAD DATA LOCAL INPATH '/home/hduser/cust_fixed_width.txt' INTO TABLE cust_fixed_raw;
+Loading data to table custdb.cust_fixed_raw
+OK
+Time taken: 1.822 seconds
+
+hive> select * from cust_fixed_raw;
+OK
+1  Lara        chennai   55 2019-09-2110000
+2  vasudevan   banglore  43 2016-09-2390000
+3  Paul        chennai   33 2019-02-2020000
+4  David Hanna New Jersey29 2019-04-22     
+Time taken: 0.349 seconds, Fetched: 4 row(s)
 
 ```
 
@@ -1898,89 +1915,740 @@ load data local inpath '/home/hduser/cust_fixed_width.txt' table cust_fixed_raw
 id,name,city,age,dt,amt and load the cust_fixed_raw table using substr and trim function as
 needed.
 
-for eg to select id column :
+CREATE TABLE cust_delimited_parsed_temp AS
+select 
+    TRIM(SUBSTR(rawdata,1,3)) as id, 
+    TRIM(SUBSTR(rawdata,4,12)) as name,
+    TRIM(SUBSTR(rawdata,16,10)) as city,
+    TRIM(SUBSTR(rawdata,26,3)) as age,
+    TRIM(SUBSTR(rawdata,29,10)) as dt,
+    TRIM(SUBSTR(rawdata,39,5)) as amt
+from cust_fixed_raw;
 
-select trim(substr(rawdata,1,3)) as id, trim(substr(rawdata,4,16)) ..... as name from cust_fixed_raw;
+SELECT id FROM cust_delimited_parsed_temp;
+
+SELECT name FROM cust_delimited_parsed_temp;
+
+SELECT city FROM cust_delimited_parsed_temp;
+
+SELECT age FROM cust_delimited_parsed_temp;
+
+SELECT dt FROM cust_delimited_parsed_temp;
+
+SELECT amt FROM cust_delimited_parsed_temp;
+
+SELECT * FROM cust_delimited_parsed_temp;
 
 ``` 
+hive> CREATE TABLE cust_delimited_parsed_temp AS
+    > select 
+    >     TRIM(SUBSTR(rawdata,1,3)) as id, 
+    >     TRIM(SUBSTR(rawdata,4,12)) as name,
+    >     TRIM(SUBSTR(rawdata,16,10)) as city,
+    >     TRIM(SUBSTR(rawdata,26,3)) as age,
+    >     TRIM(SUBSTR(rawdata,29,10)) as dt,
+    >     TRIM(SUBSTR(rawdata,39,5)) as amt
+    > from cust_fixed_raw;
+Query ID = hduser_20220705131516_ca9ce3eb-ad22-4935-b978-d07c880f3018
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0054, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0054/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0054
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 13:16:11,130 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 13:16:27,280 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.35 sec
+MapReduce Total cumulative CPU time: 5 seconds 350 msec
+Ended Job = job_1656670722551_0054
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/custdb.db/.hive-staging_hive_2022-07-05_13-15-16_155_5527849356121945791-1/-ext-10002
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/custdb.db/cust_delimited_parsed_temp
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 5.35 sec   HDFS Read: 4746 HDFS Write: 241 SUCCESS
+Total MapReduce CPU Time Spent: 5 seconds 350 msec
+OK
+Time taken: 74.477 seconds
+
+hive> SELECT id FROM cust_delimited_parsed_temp;
+OK
+1
+2
+3
+4
+Time taken: 0.22 seconds, Fetched: 4 row(s)
+
+hive> SELECT name FROM cust_delimited_parsed_temp;
+OK
+Lara
+vasudevan
+Paul
+David Hanna
+Time taken: 0.223 seconds, Fetched: 4 row(s)
+
+hive> SELECT city FROM cust_delimited_parsed_temp;
+OK
+chennai
+banglore
+chennai
+New Jersey
+Time taken: 0.245 seconds, Fetched: 4 row(s)
+
+hive> SELECT age FROM cust_delimited_parsed_temp;
+OK
+55
+43
+33
+29
+Time taken: 0.207 seconds, Fetched: 4 row(s)
+
+hive> SELECT dt FROM cust_delimited_parsed_temp;
+OK
+2019-09-21
+2016-09-23
+2019-02-20
+2019-04-22
+Time taken: 0.341 seconds, Fetched: 4 row(s)
+
+hive> SELECT amt FROM cust_delimited_parsed_temp;
+OK
+10000
+90000
+20000
+
+Time taken: 0.398 seconds, Fetched: 4 row(s)
+
+hive> SELECT * FROM cust_delimited_parsed_temp;
+OK
+1	Lara	chennai	55	2019-09-21	10000
+2	vasudevan	banglore	43	2016-09-23	90000
+3	Paul	chennai	33	2019-02-20	20000
+4	David Hanna	New Jersey	29	2019-04-22	
+Time taken: 0.26 seconds, Fetched: 4 row(s)
 
 ```
 
 5. Create another temporary external table namely tmp_ext_sqp with the location of
 /user/hduser/tmp_ext_sqp/ and
 
-insert into tmp_ext_sqp select id,dt,amt from cust_delimited_parsed_temp;
+CREATE EXTERNAL TABLE tmp_ext_sqp (id INT, dt DATE, amt INT)
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/user/hduser/tmp_ext_sqp';
+
+INSERT INTO tmp_ext_sqp SELECT id, dt, amt FROM cust_delimited_parsed_temp;
+
+SELECT * FROM tmp_ext_sqp;
+
+DESCRIBE tmp_ext_sqp;
 
 ``` 
+hive> CREATE EXTERNAL TABLE tmp_ext_sqp (id INT, dt DATE, amt INT)
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY ','
+    > STORED AS TEXTFILE
+    > LOCATION '/user/hduser/tmp_ext_sqp';
+OK
+Time taken: 0.169 seconds
+
+hive> INSERT INTO tmp_ext_sqp SELECT id, dt, amt FROM cust_delimited_parsed_temp;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220705134127_afce352b-33dd-42b6-89bc-ee03f229e467
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0056, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0056/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0056
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 13:42:13,558 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 13:42:28,524 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 6.28 sec
+MapReduce Total cumulative CPU time: 6 seconds 280 msec
+Ended Job = job_1656670722551_0056
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/tmp_ext_sqp/.hive-staging_hive_2022-07-05_13-41-27_447_8488074100506993405-1/-ext-10000
+Loading data to table custdb.tmp_ext_sqp
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 6.28 sec   HDFS Read: 4693 HDFS Write: 147 SUCCESS
+Total MapReduce CPU Time Spent: 6 seconds 280 msec
+OK
+Time taken: 65.33 seconds
+
+hive> SELECT * FROM tmp_ext_sqp;
+OK
+1	2019-09-21	10000
+2	2016-09-23	90000
+3	2019-02-20	20000
+4	2019-04-22	NULL
+Time taken: 0.214 seconds, Fetched: 4 row(s)
+
+hive> DESCRIBE tmp_ext_sqp;
+OK
+id                  	int                 	                    
+dt                  	date                	                    
+amt                 	int                 	                    
+Time taken: 0.091 seconds, Fetched: 3 row(s)
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/tmp_ext_sqp
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop         73 2022-07-05 13:42 /user/hduser/tmp_ext_sqp/000000_0
+
+[hduser@localhost ~]$ hadoop fs -text /user/hduser/tmp_ext_sqp/*
+1,2019-09-21,10000
+2,2016-09-23,90000
+3,2019-02-20,20000
+4,2019-04-22,\N
+
 
 ```
 
 6. Export only id, dt and amt column into a mysql table cust_fixed_mysql using sqoop export from
 the /user/hduser/tmp_ext_sqp/ location as a export-dir.
 
+use custpayments;
+
+CREATE TABLE cust_fixed_mysql (
+  id int,
+  dt date,
+  amt int
+);
+
+show tables;
+
+select * from cust_fixed_mysql;
+
+sqoop export \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/custpayments \
+    --username root \
+    --password Root123$ \
+    --export-dir /user/hduser/tmp_ext_sqp \
+    --input-fields-terminated-by ',' \
+    --lines-terminated-by '\n' \
+    --input-null-string '\\N' \
+    --input-null-non-string '\\N' \
+    -m 1 \
+    --table cust_fixed_mysql;
+
 ``` 
+mysql> use custpayments;
+Database changed
+
+mysql> CREATE TABLE cust_fixed_mysql (
+    ->   id int,
+    ->   dt date,
+    ->   amt int
+    -> );
+Query OK, 0 rows affected (0.12 sec)
+
+mysql> show tables;
++------------------------+
+| Tables_in_custpayments |
++------------------------+
+| cust_fixed_mysql       |
+| cust_payments          |
+| customers              |
++------------------------+
+3 rows in set (0.01 sec)
+
+mysql> select * from cust_fixed_mysql;
+Empty set (0.01 sec)
+
+[hduser@localhost ~]$ sqoop export \
+>     --driver com.mysql.cj.jdbc.Driver \
+>     --connect jdbc:mysql://localhost/custpayments \
+>     --username root \
+>     --password Root123$ \
+>     --export-dir /user/hduser/tmp_ext_sqp \
+>     --input-fields-terminated-by ',' \
+>     --lines-terminated-by '\n' \
+>     --input-null-string '\\N' \
+>     --input-null-non-string '\\N' \
+>     -m 1 \
+>     --table cust_fixed_mysql;
+Warning: /usr/local/hbase does not exist! HBase imports will fail.
+Please set $HBASE_HOME to the root of your HBase installation.
+Warning: /usr/local/sqoop/../hcatalog does not exist! HCatalog jobs will fail.
+Please set $HCAT_HOME to the root of your HCatalog installation.
+Warning: /usr/local/sqoop/../accumulo does not exist! Accumulo imports will fail.
+Please set $ACCUMULO_HOME to the root of your Accumulo installation.
+Warning: /usr/local/sqoop/../zookeeper does not exist! Accumulo imports will fail.
+Please set $ZOOKEEPER_HOME to the root of your Zookeeper installation.
+22/07/05 15:03:37 INFO sqoop.Sqoop: Running Sqoop version: 1.4.6
+22/07/05 15:03:37 WARN tool.BaseSqoopTool: Setting your password on the command-line is insecure. Consider using -P instead.
+22/07/05 15:03:37 WARN sqoop.ConnFactory: Parameter --driver is set to an explicit driver however appropriate connection manager is not being set (via --connection-manager). Sqoop is going to fall back to org.apache.sqoop.manager.GenericJdbcManager. Please specify explicitly which connection manager should be used next time.
+22/07/05 15:03:37 INFO manager.SqlManager: Using default fetchSize of 1000
+22/07/05 15:03:37 INFO tool.CodeGenTool: Beginning code generation
+22/07/05 15:03:39 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM cust_fixed_mysql AS t WHERE 1=0
+22/07/05 15:03:39 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM cust_fixed_mysql AS t WHERE 1=0
+22/07/05 15:03:39 INFO orm.CompilationManager: HADOOP_MAPRED_HOME is /usr/local/hadoop
+Note: /tmp/sqoop-hduser/compile/dededa92d50cf09d28a6894ec1170440/cust_fixed_mysql.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+22/07/05 15:03:43 INFO orm.CompilationManager: Writing jar file: /tmp/sqoop-hduser/compile/dededa92d50cf09d28a6894ec1170440/cust_fixed_mysql.jar
+22/07/05 15:03:43 INFO mapreduce.ExportJobBase: Beginning export of cust_fixed_mysql
+22/07/05 15:03:43 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/05 15:03:43 INFO Configuration.deprecation: mapred.jar is deprecated. Instead, use mapreduce.job.jar
+22/07/05 15:03:45 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM cust_fixed_mysql AS t WHERE 1=0
+22/07/05 15:03:45 INFO Configuration.deprecation: mapred.reduce.tasks.speculative.execution is deprecated. Instead, use mapreduce.reduce.speculative
+22/07/05 15:03:45 INFO Configuration.deprecation: mapred.map.tasks.speculative.execution is deprecated. Instead, use mapreduce.map.speculative
+22/07/05 15:03:45 INFO Configuration.deprecation: mapred.map.tasks is deprecated. Instead, use mapreduce.job.maps
+22/07/05 15:03:46 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/05 15:03:51 INFO input.FileInputFormat: Total input paths to process : 1
+22/07/05 15:03:51 INFO input.FileInputFormat: Total input paths to process : 1
+22/07/05 15:03:51 INFO mapreduce.JobSubmitter: number of splits:1
+22/07/05 15:03:51 INFO Configuration.deprecation: mapred.map.tasks.speculative.execution is deprecated. Instead, use mapreduce.map.speculative
+22/07/05 15:03:52 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1656670722551_0066
+22/07/05 15:03:53 INFO impl.YarnClientImpl: Submitted application application_1656670722551_0066
+22/07/05 15:03:53 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1656670722551_0066/
+22/07/05 15:03:53 INFO mapreduce.Job: Running job: job_1656670722551_0066
+22/07/05 15:04:08 INFO mapreduce.Job: Job job_1656670722551_0066 running in uber mode : false
+22/07/05 15:04:08 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/05 15:04:18 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/05 15:04:19 INFO mapreduce.Job: Job job_1656670722551_0066 completed successfully
+22/07/05 15:04:20 INFO mapreduce.Job: Counters: 30
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=133572
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=212
+		HDFS: Number of bytes written=0
+		HDFS: Number of read operations=4
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=0
+	Job Counters 
+		Launched map tasks=1
+		Data-local map tasks=1
+		Total time spent by all maps in occupied slots (ms)=7944
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=7944
+		Total vcore-seconds taken by all map tasks=7944
+		Total megabyte-seconds taken by all map tasks=8134656
+	Map-Reduce Framework
+		Map input records=4
+		Map output records=4
+		Input split bytes=136
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=178
+		CPU time spent (ms)=2930
+		Physical memory (bytes) snapshot=171745280
+		Virtual memory (bytes) snapshot=2110783488
+		Total committed heap usage (bytes)=116916224
+	File Input Format Counters 
+		Bytes Read=0
+	File Output Format Counters 
+		Bytes Written=0
+22/07/05 15:04:20 INFO mapreduce.ExportJobBase: Transferred 212 bytes in 34.3326 seconds (6.1749 bytes/sec)
+22/07/05 15:04:20 INFO mapreduce.ExportJobBase: Exported 4 records.
+
+mysql> select * from cust_fixed_mysql;
++------+------------+-------+
+| id   | dt         | amt   |
++------+------------+-------+
+|    1 | 2019-09-21 | 10000 |
+|    2 | 2016-09-23 | 90000 |
+|    3 | 2019-02-20 | 20000 |
+|    4 | 2019-04-22 |  NULL |
++------+------------+-------+
+4 rows in set (0.00 sec)
 
 ```
 
 7. Create an external partitioned table cust_parsed_orc of type orc format partitioned based on dt.
 
-create external table cust_parsed_orc (id int,name varchar(12),city varchar(10),age int, amt
-double)
-partitioned by (dt date)
-stored as orc
-location '/user/hduser/cust_parsed_orc';
+CREATE EXTERNAL TABLE cust_parsed_orc (
+    id INT,
+    name VARCHAR(12),
+    city VARCHAR(10),
+    age INT, 
+    amt double)
+PARTITIONED BY (dt date)
+STORED AS ORC
+LOCATION '/user/hduser/cust_parsed_orc';
+
+DESCRIBE cust_parsed_orc;
+
+SHOW CREATE TABLE cust_parsed_orc;
+
+SELECT * FROM cust_parsed_orc;
+
 
 ``` 
+hive> CREATE EXTERNAL TABLE cust_parsed_orc (
+    >     id INT,
+    >     name VARCHAR(12),
+    >     city VARCHAR(10),
+    >     age INT, 
+    >     amt double)
+    > PARTITIONED BY (dt date)
+    > STORED AS ORC
+    > LOCATION '/user/hduser/cust_parsed_orc';
+OK
+Time taken: 0.238 seconds
+
+hive> DESCRIBE cust_parsed_orc;
+OK
+id                  	int                 	                    
+name                	varchar(12)         	                    
+city                	varchar(10)         	                    
+age                 	int                 	                    
+amt                 	double              	                    
+dt                  	date                	                    
+	 	 
+# Partition Information	 	 
+# col_name            	data_type           	comment             
+	 	 
+dt                  	date                	                    
+Time taken: 0.193 seconds, Fetched: 11 row(s)
+
+hive> SHOW CREATE TABLE cust_parsed_orc;
+OK
+CREATE EXTERNAL TABLE `cust_parsed_orc`(
+  `id` int, 
+  `name` varchar(12), 
+  `city` varchar(10), 
+  `age` int, 
+  `amt` double)
+PARTITIONED BY ( 
+  `dt` date)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.ql.io.orc.OrcSerde' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.orc.OrcInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat'
+LOCATION
+  'hdfs://localhost:54310/user/hduser/cust_parsed_orc'
+TBLPROPERTIES (
+  'transient_lastDdlTime'='1657013930')
+Time taken: 0.105 seconds, Fetched: 18 row(s)
+
+hive> SELECT * FROM cust_parsed_orc;
+OK
+Time taken: 0.308 seconds
 
 ```
 
 8. Filter and Load only chennai data into the above table cust_parsed_orc by selecting all columns
 from cust_delimited_parsed_temp table.
 
-Insert into cust_parsed_orc partition(dt) select id,name,city,age,amt,dt from
-cust_delimited_parsed_temp;
+hadoop fs -ls /user/hduser/cust_parsed_orc
+
+hadoop fs -cat /user/hduser/cust_parsed_orc/*
+
+INSERT INTO cust_parsed_orc PARTITION(dt) SELECT id, name, city, age, amt, dt FROM cust_delimited_parsed_temp WHERE city='chennai';
+
+set hive.exec.dynamic.partition.mode=nonstrict;
+
+hadoop fs -ls /user/hduser/cust_parsed_orc
+
+SELECT * FROM cust_parsed_orc;
 
 ``` 
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/cust_parsed_orc
+
+[hduser@localhost ~]$ hadoop fs -cat /user/hduser/cust_parsed_orc/*
+cat: `/user/hduser/cust_parsed_orc/*': No such file or directory
+
+hive> INSERT INTO cust_parsed_orc PARTITION(dt) SELECT id, name, city, age, amt, dt FROM cust_delimited_parsed_temp WHERE city='chennai';
+FAILED: SemanticException [Error 10096]: Dynamic partition strict mode requires at least one static partition column. To turn this off set hive.exec.dynamic.partition.mode=nonstrict
+
+hive> set hive.exec.dynamic.partition.mode=nonstrict;
+
+hive> INSERT INTO cust_parsed_orc PARTITION(dt) SELECT id, name, city, age, amt, dt FROM cust_delimited_parsed_temp WHERE city='chennai';
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220705152553_e7ecda17-61b2-4c32-a8d8-8e96def120a3
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0068, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0068/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0068
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 15:26:41,013 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 15:26:57,794 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 7.09 sec
+MapReduce Total cumulative CPU time: 7 seconds 90 msec
+Ended Job = job_1656670722551_0068
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/cust_parsed_orc/.hive-staging_hive_2022-07-05_15-25-53_543_7863075353118383864-1/-ext-10000
+Loading data to table custdb.cust_parsed_orc partition (dt=null)
+
+Loaded : 2/2 partitions.
+	 Time taken to load dynamic partitions: 0.483 seconds
+	 Time taken for adding to write entity : 0.0 seconds
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 7.09 sec   HDFS Read: 6224 HDFS Write: 1259 SUCCESS
+Total MapReduce CPU Time Spent: 7 seconds 90 msec
+OK
+Time taken: 67.73 seconds
+
+hduser@localhost ~]$ hadoop fs -ls /user/hduser/cust_parsed_orc
+Found 2 items
+drwxr-xr-x   - hduser hadoop          0 2022-07-05 15:26 /user/hduser/cust_parsed_orc/dt=2019-02-20
+drwxr-xr-x   - hduser hadoop          0 2022-07-05 15:26 /user/hduser/cust_parsed_orc/dt=2019-09-21
+
+hive> SELECT * FROM cust_parsed_orc;
+OK
+3	Paul	chennai	33	20000.0	2019-02-20
+1	Lara	chennai	55	10000.0	2019-09-21
+Time taken: 0.317 seconds, Fetched: 2 row(s)
 
 ```
 
 9. Create a json table called cust_parsed_json (to load into a json format using the following steps).
 
-create external table cust_parsed_json(id int, name string,city string, age int)
+CREATE EXTERNAL TABLE cust_parsed_json (
+    id INT,
+    name STRING,
+    city STRING,
+    age INT)
 ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
-location '/user/hduser/custjson';
+LOCATION '/user/hduser/cust_parsed_json';
+
+DESCRIBE cust_parsed_json;
+
+SHOW CREATE TABLE cust_parsed_json;
+
+SELECT * FROM cust_parsed_json;
 
 ``` 
+hive> 
+    > CREATE EXTERNAL TABLE cust_parsed_json (
+    >     id INT,
+    >     name STRING,
+    >     city STRING,
+    >     age INT)
+    > ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+    > LOCATION '/user/hduser/cust_parsed_json';
+OK
+Time taken: 0.157 seconds
+
+hive> DESCRIBE cust_parsed_json;
+OK
+id                  	int                 	from deserializer   
+name                	string              	from deserializer   
+city                	string              	from deserializer   
+age                 	int                 	from deserializer   
+Time taken: 0.139 seconds, Fetched: 4 row(s)
+hive> SHOW CREATE TABLE cust_parsed_json;
+OK
+CREATE EXTERNAL TABLE `cust_parsed_json`(
+  `id` int COMMENT 'from deserializer', 
+  `name` string COMMENT 'from deserializer', 
+  `city` string COMMENT 'from deserializer', 
+  `age` int COMMENT 'from deserializer')
+ROW FORMAT SERDE 
+  'org.apache.hive.hcatalog.data.JsonSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+  'hdfs://localhost:54310/user/hduser/cust_parsed_json'
+TBLPROPERTIES (
+  'transient_lastDdlTime'='1657015430')
+Time taken: 0.102 seconds, Fetched: 15 row(s)
+
+hive> SELECT * FROM cust_parsed_json;
+OK
+Time taken: 0.205 seconds
+
 
 ```
 
 
 10. Insert into the cust_parsed_json only non chennai data using insert select of id,name,city, age
-from the cust_delimited_parsed_temp table and verify the data in the /user/hduser/custjson
+from the cust_delimited_parsed_temp table and verify the data in the /user/hduser/cust_parsed_json
 should be in json format.
 
+hadoop fs -ls /user/hduser/cust_parsed_json
+
+hadoop fs -cat /user/hduser/cust_parsed_json/*
+
+INSERT INTO cust_parsed_json SELECT id, name, city, age FROM cust_delimited_parsed_temp WHERE city !='chennai';
+
+hadoop fs -ls /user/hduser/cust_parsed_json
+
+hadoop fs -cat /user/hduser/cust_parsed_json/*
+
+SELECT * FROM cust_parsed_json;
+
 ``` 
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/cust_parsed_json
+
+[hduser@localhost ~]$ hadoop fs -cat /user/hduser/cust_parsed_json/*
+cat: `/user/hduser/cust_parsed_json/*': No such file or directory
+
+hive> INSERT INTO cust_parsed_json SELECT id, name, city, age FROM cust_delimited_parsed_temp WHERE city !='chennai';
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220705154024_e5568c92-ab21-481e-848e-ea3a2f8b8b5d
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0069, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0069/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0069
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 15:41:11,549 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 15:41:27,162 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.2 sec
+MapReduce Total cumulative CPU time: 5 seconds 200 msec
+Ended Job = job_1656670722551_0069
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/cust_parsed_json/.hive-staging_hive_2022-07-05_15-40-24_953_6113917011098833990-1/-ext-10000
+Loading data to table custdb.cust_parsed_json
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 5.2 sec   HDFS Read: 5033 HDFS Write: 176 SUCCESS
+Total MapReduce CPU Time Spent: 5 seconds 200 msec
+OK
+Time taken: 65.397 seconds
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/cust_parsed_json
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop        114 2022-07-05 15:41 /user/hduser/cust_parsed_json/000000_0
+
+[hduser@localhost ~]$ hadoop fs -cat /user/hduser/cust_parsed_json/*
+{"id":2,"name":"vasudevan","city":"banglore","age":43}
+{"id":4,"name":"David Hanna","city":"New Jersey","age":29}
+
+hive> SELECT * FROM cust_parsed_json;
+OK
+2	vasudevan	banglore	43
+4	David Hanna	New Jersey	29
+Time taken: 0.218 seconds, Fetched: 2 row(s)
 
 ```
 
 11. Create another json table called cust_parsed_complex_json (to load into a json format using the
 following steps).
 
-create external table cust_parsed_complex_json(id int, name string,misc_info struct<city:string,
-age:int>)
+CREATE EXTERNAL TABLE cust_parsed_complex_json(
+    id INT, 
+    name STRING,
+    misc_info STRUCT<city:STRING, age:INT>)
 ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
-location '/user/hduser/custcomplexjson';
+LOCATION '/user/hduser/custcomplexjson';
+
+DESCRIBE cust_parsed_complex_json;
+
+SHOW CREATE TABLE cust_parsed_complex_json;
+
+SELECT * FROM cust_parsed_complex_json;
 
 ``` 
+hive> CREATE EXTERNAL TABLE cust_parsed_complex_json(
+    >     id INT, 
+    >     name STRING,
+    >     misc_info STRUCT<city:STRING, age:INT>)
+    > ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+    > LOCATION '/user/hduser/custcomplexjson';
+OK
+Time taken: 0.225 seconds
+
+hive> DESCRIBE cust_parsed_complex_json;
+OK
+id                  	int                 	from deserializer   
+name                	string              	from deserializer   
+misc_info           	struct<city:string,age:int>	from deserializer   
+Time taken: 0.119 seconds, Fetched: 3 row(s)
+
+hive> SHOW CREATE TABLE cust_parsed_complex_json;
+OK
+CREATE EXTERNAL TABLE `cust_parsed_complex_json`(
+  `id` int COMMENT 'from deserializer', 
+  `name` string COMMENT 'from deserializer', 
+  `misc_info` struct<city:string,age:int> COMMENT 'from deserializer')
+ROW FORMAT SERDE 
+  'org.apache.hive.hcatalog.data.JsonSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+  'hdfs://localhost:54310/user/hduser/custcomplexjson'
+TBLPROPERTIES (
+  'transient_lastDdlTime'='1657017336')
+Time taken: 0.126 seconds, Fetched: 14 row(s)
+
+hive> SELECT * FROM cust_parsed_complex_json;
+OK
+Time taken: 0.216 seconds
 
 ```
 
 
-12. Insert into the cust_parsed_json all data using insert select of id,name,named_struct("city",city,
-"age",age) from the cust_delimited_parsed_temp table and verify the data in the
-/user/hduser/custcomplexjson should be in a complex json format.
+12. Insert into the cust_parsed_json all data using 
+
+hadoop fs -ls /user/hduser/custcomplexjson
+
+hadoop fs -cat /user/hduser/custcomplexjson/*
+
+INSERT INTO cust_parsed_complex_json SELECT CAST(id as INT), name, named_struct("city",city, "age",CAST(age as INT)) FROM cust_delimited_parsed_temp;
+
+hadoop fs -ls /user/hduser/custcomplexjson
+
+hadoop fs -cat /user/hduser/custcomplexjson/*
+
+SELECT * FROM cust_parsed_complex_json;
 
 ``` 
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/custcomplexjson
+22/07/05 17:06:30 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+
+[hduser@localhost ~]$ hadoop fs -cat /user/hduser/custcomplexjson/*
+cat: `/user/hduser/custcomplexjson/*': No such file or directory
+
+hive> INSERT INTO cust_parsed_complex_json SELECT CAST(id as INT), name, named_struct("city",city, "age",age) FROM cust_delimited_parsed_temp;
+FAILED: SemanticException [Error 10044]: Line 1:12 Cannot insert into target table because column number/types are different 'cust_parsed_complex_json': Cannot convert column 2 from struct<city:string,age:string> to struct<city:string,age:int>.
+hive> INSERT INTO cust_parsed_complex_json SELECT CAST(id as INT), name, named_struct("city",city, "age",CAST(age as INT)) FROM cust_delimited_parsed_temp;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220705171231_8eabc326-aae7-44f7-8949-054aac501369
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1656670722551_0070, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0070/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0070
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-05 17:13:19,574 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 17:13:36,805 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.2 sec
+MapReduce Total cumulative CPU time: 5 seconds 200 msec
+Ended Job = job_1656670722551_0070
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/custcomplexjson/.hive-staging_hive_2022-07-05_17-12-31_175_7535873194143932735-1/-ext-10000
+Loading data to table custdb.cust_parsed_complex_json
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 5.2 sec   HDFS Read: 4952 HDFS Write: 338 SUCCESS
+Total MapReduce CPU Time Spent: 5 seconds 200 msec
+OK
+Time taken: 69.039 seconds
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/custcomplexjson
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop        268 2022-07-05 17:13 /user/hduser/custcomplexjson/000000_0
+
+[hduser@localhost ~]$ hadoop fs -cat /user/hduser/custcomplexjson/*
+{"id":1,"name":"Lara","misc_info":{"city":"chennai","age":55}}
+{"id":2,"name":"vasudevan","misc_info":{"city":"banglore","age":43}}
+{"id":3,"name":"Paul","misc_info":{"city":"chennai","age":33}}
+{"id":4,"name":"David Hanna","misc_info":{"city":"New Jersey","age":29}}
+
+hive> SELECT * FROM cust_parsed_complex_json;
+OK
+1	Lara	{"city":"chennai","age":55}
+2	vasudevan	{"city":"banglore","age":43}
+3	Paul	{"city":"chennai","age":33}
+4	David Hanna	{"city":"New Jersey","age":29}
+Time taken: 0.278 seconds, Fetched: 4 row(s)
 
 ```
 
