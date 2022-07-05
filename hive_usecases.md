@@ -2930,10 +2930,10 @@ DROP TABLE IF EXISTS customeravro;
 
 CREATE EXTERNAL TABLE customeravro
 STORED AS AVRO
-LOCATION '/user/hduser/customeravro'
+LOCATION '/user/hduser/custavro'
 TBLPROPERTIES('avro.schema.url'='hdfs:///tmp/customer.avsc');
 
-LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
+--LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
 
 select customernumber, customername, contactlastname, contactfirstname, phone,addressline1,
 addressline2, city, state, postalcode, country, salesrepemployeenumber, creditlimit from
@@ -3046,7 +3046,7 @@ DROP TABLE IF EXISTS customeravro;
 
 CREATE EXTERNAL TABLE customeravro
 STORED AS AVRO
-LOCATION '/user/hduser/customeravro'
+LOCATION '/user/hduser/custavro'
 TBLPROPERTIES('avro.schema.url'='hdfs:///tmp/customer.avsc');
 
 LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
@@ -3062,7 +3062,6 @@ hive> select customernumber, customername, contactlastname, contactfirstname, ad
     > addressline2, city, state, postalcode, country, salesrepemployeenumber, creditlimit,mobile from
     > customeravro where customernumber=496;
 OK
-496	Kelly's Gift Shop	Snowden	Tony	Arenales 1938 3'A'	NULL	Auckland  	NULL	NULL	New Zealand	1612	110000.00	NULL
 496	Kelly's Gift Shop	Snowden	Tony	Arenales 1938 3'A'	NULL	Auckland  	NULL	NULL	New Zealand	1612	110000.00	9833339123
 Time taken: 0.265 seconds, Fetched: 2 row(s)
 
