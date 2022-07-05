@@ -3049,7 +3049,7 @@ STORED AS AVRO
 LOCATION '/user/hduser/custavro'
 TBLPROPERTIES('avro.schema.url'='hdfs:///tmp/customer.avsc');
 
-LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
+--LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
 
 Select the schema changed (phone removed and mobile added) data using the below query:
 
