@@ -1831,3 +1831,156 @@ mysql> select * from cust_payments limit 10;
 10 rows in set (0.00 sec)
 
 ```
+
+# Usecase 3: Managing Fixed Width Data and Schema migration
+
+**Requirement:**
+
+Source provider is providing unstructured data or fixed width data without any delimiter, we have to
+load only the subset of the data into RDBMS table, JSON table, orc table etc., by splitting the columns as
+given below.
+
+**Answer – By using string/varchar type defined for the whole data set we can handle this.**
+
+**Note:** The below given data is a fixed width data. 
+
+id is of length 3 character, 
+
+name is of length 12 character, 
+
+city is of length 10 character, 
+
+age is of length 3 character, 
+
+dt is of length 10 character and 
+
+amt is of length 5 character 
+
+hence totally 43 character length
+
+1 Lara chennai 55 2019-09-2110000
+2 vasudevan banglore 43 2016-09-2390000
+3 Paul chennai 33 2019-02-2020000
+4 David Hanna New Jersey29 2019-04-22
+
+**Steps:**
+
+Load the fixedwidth data to a managed raw table -> create temporary managed table and load all raw
+data into the respective columns by applying the parsing logic -> create temporary external table and
+insert select only few columns from the temp managed table -> sqoop export from temp ext table loc to
+the DB table -> from the temp managed table load the orc table with filtered data -> from the temp
+managed table conver few columns into JSON format.
+
+1. Download the [resources/data/hiveusecases/cust_fixed_width.txt](resources/data/hiveusecases/cust_fixed_width.txt) fixed data into /home/hduser/cust_fixed_width.txt
+
+``` 
+
+```
+
+2. Create and load into a hive temporary table called cust_fixed_raw in a column rawdata of type
+varchar(43).
+
+Create table cust_fixed_raw(rawdata char(43));
+
+``` 
+
+```
+
+3. Load the data
+
+load data local inpath '/home/hduser/cust_fixed_width.txt' table cust_fixed_raw
+
+``` 
+
+```
+
+4. Create a temporary table called cust_delimited_parsed_temp with all the columns such as
+id,name,city,age,dt,amt and load the cust_fixed_raw table using substr and trim function as
+needed.
+
+for eg to select id column :
+
+select trim(substr(rawdata,1,3)) as id, trim(substr(rawdata,4,16)) ..... as name from cust_fixed_raw;
+
+``` 
+
+```
+
+5. Create another temporary external table namely tmp_ext_sqp with the location of
+/user/hduser/tmp_ext_sqp/ and
+
+insert into tmp_ext_sqp select id,dt,amt from cust_delimited_parsed_temp;
+
+``` 
+
+```
+
+6. Export only id, dt and amt column into a mysql table cust_fixed_mysql using sqoop export from
+the /user/hduser/tmp_ext_sqp/ location as a export-dir.
+
+``` 
+
+```
+
+7. Create an external partitioned table cust_parsed_orc of type orc format partitioned based on dt.
+
+create external table cust_parsed_orc (id int,name varchar(12),city varchar(10),age int, amt
+double)
+partitioned by (dt date)
+stored as orc
+location '/user/hduser/cust_parsed_orc';
+
+``` 
+
+```
+
+8. Filter and Load only chennai data into the above table cust_parsed_orc by selecting all columns
+from cust_delimited_parsed_temp table.
+
+Insert into cust_parsed_orc partition(dt) select id,name,city,age,amt,dt from
+cust_delimited_parsed_temp;
+
+``` 
+
+```
+
+9. Create a json table called cust_parsed_json (to load into a json format using the following steps).
+
+create external table cust_parsed_json(id int, name string,city string, age int)
+ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+location '/user/hduser/custjson';
+
+``` 
+
+```
+
+
+10. Insert into the cust_parsed_json only non chennai data using insert select of id,name,city, age
+from the cust_delimited_parsed_temp table and verify the data in the /user/hduser/custjson
+should be in json format.
+
+``` 
+
+```
+
+11. Create another json table called cust_parsed_complex_json (to load into a json format using the
+following steps).
+
+create external table cust_parsed_complex_json(id int, name string,misc_info struct<city:string,
+age:int>)
+ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+location '/user/hduser/custcomplexjson';
+
+``` 
+
+```
+
+
+12. Insert into the cust_parsed_json all data using insert select of id,name,named_struct("city",city,
+"age",age) from the cust_delimited_parsed_temp table and verify the data in the
+/user/hduser/custcomplexjson should be in a complex json format.
+
+``` 
+
+```
+
