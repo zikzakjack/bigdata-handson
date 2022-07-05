@@ -2653,3 +2653,418 @@ Time taken: 0.278 seconds, Fetched: 4 row(s)
 ```
 
 # Use Case 4: Hive Schema Evolution (Hive Dynamic schema):
+
+**Requirement:**
+
+Source provider change the structure of their tables or data set any time by adding/removing the
+columns and are not communicating it to the BigData platform team, how to handle this evolving
+schema requirement automatically ?
+
+**Answer – By using Avro Serialized data set, we can handle this scenario.**
+
+cid int,name string, age int
+
+1,irfan,37
+
+
+cid int, age int,address string,ms char(1)
+
+1, 37,43-cds,M
+
+
+cid int, age int,ms char(1),gender char(1)
+
+1, 37,43-cds,M,F
+
+**Steps:**
+
+Get Avro data from the source ->
+extract the schema .avsc from the given avro data using avro-tools.jar program ->
+using that schema .avsc create the hive external table pointing to the avro data location.
+
+* Sqoop import directly the DB data in a avro format
+* Download the avro jar (avro-tools-1.8.1.jar) from  https://mvnrepository.com/artifact/org.apache.avro/avro-tools/1.8.1  url and copy to
+/home/hduser/ path in order to extract the schema in .avsc format from the avro data imported
+in the above step.
+* Copy the customer.avsc (avro schema file extracted from the above step into /tmp/ HDFS
+location.
+* Create hive table without defining the columns by using the avro schema file (avsc) created in
+the above step, which helps hive create dynamic schema if we don’t know the schema upfront.
+This is a very good feature to anlayse and has a good value in the interview if explained.
+
+1. Import the Customer data into hdfs using sqoop import with 3 mappers into  /user/hduser/custavro location
+
+sqoop import -Dmapreduce.job.user.classpath.first=true \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/custpayments \
+    --username root \
+    --password Root123$ \
+    --table customers \
+    -m 3 \
+    --split-by customernumber \
+    --target-dir /user/hduser/custavro \
+    --delete-target-dir \
+    --as-avrodatafile;
+
+hadoop fs -ls /user/hduser/custavro
+
+``` 
+[hduser@localhost ~]$ sqoop import -Dmapreduce.job.user.classpath.first=true \
+>     --driver com.mysql.cj.jdbc.Driver \
+>     --connect jdbc:mysql://localhost/custpayments \
+>     --username root \
+>     --password Root123$ \
+>     --table customers \
+>     -m 3 \
+>     --split-by customernumber \
+>     --target-dir /user/hduser/custavro \
+>     --delete-target-dir \
+>     --as-avrodatafile;
+Warning: /usr/local/hbase does not exist! HBase imports will fail.
+Please set $HBASE_HOME to the root of your HBase installation.
+Warning: /usr/local/sqoop/../hcatalog does not exist! HCatalog jobs will fail.
+Please set $HCAT_HOME to the root of your HCatalog installation.
+Warning: /usr/local/sqoop/../accumulo does not exist! Accumulo imports will fail.
+Please set $ACCUMULO_HOME to the root of your Accumulo installation.
+Warning: /usr/local/sqoop/../zookeeper does not exist! Accumulo imports will fail.
+Please set $ZOOKEEPER_HOME to the root of your Zookeeper installation.
+22/07/05 17:34:55 INFO sqoop.Sqoop: Running Sqoop version: 1.4.6
+22/07/05 17:34:55 WARN tool.BaseSqoopTool: Setting your password on the command-line is insecure. Consider using -P instead.
+22/07/05 17:34:55 WARN sqoop.ConnFactory: Parameter --driver is set to an explicit driver however appropriate connection manager is not being set (via --connection-manager). Sqoop is going to fall back to org.apache.sqoop.manager.GenericJdbcManager. Please specify explicitly which connection manager should be used next time.
+22/07/05 17:34:55 INFO manager.SqlManager: Using default fetchSize of 1000
+22/07/05 17:34:55 INFO tool.CodeGenTool: Beginning code generation
+22/07/05 17:34:57 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/05 17:34:57 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/05 17:34:57 INFO orm.CompilationManager: HADOOP_MAPRED_HOME is /usr/local/hadoop
+Note: /tmp/sqoop-hduser/compile/11e4b99622f7d99ca2877e8e12e9d0ee/customers.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+22/07/05 17:35:02 INFO orm.CompilationManager: Writing jar file: /tmp/sqoop-hduser/compile/11e4b99622f7d99ca2877e8e12e9d0ee/customers.jar
+22/07/05 17:35:03 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/05 17:35:05 INFO tool.ImportTool: Destination directory /user/hduser/custavro is not present, hence not deleting.
+22/07/05 17:35:05 INFO mapreduce.ImportJobBase: Beginning import of customers
+22/07/05 17:35:05 INFO Configuration.deprecation: mapred.jar is deprecated. Instead, use mapreduce.job.jar
+22/07/05 17:35:05 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/05 17:35:05 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/05 17:35:05 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM customers AS t WHERE 1=0
+22/07/05 17:35:06 INFO mapreduce.DataDrivenImportJob: Writing Avro schema file: /tmp/sqoop-hduser/compile/11e4b99622f7d99ca2877e8e12e9d0ee/customers.avsc
+22/07/05 17:35:06 INFO Configuration.deprecation: mapred.map.tasks is deprecated. Instead, use mapreduce.job.maps
+22/07/05 17:35:07 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/05 17:35:13 INFO db.DBInputFormat: Using read commited transaction isolation
+22/07/05 17:35:13 INFO db.DataDrivenDBInputFormat: BoundingValsQuery: SELECT MIN(customernumber), MAX(customernumber) FROM customers
+22/07/05 17:35:13 INFO mapreduce.JobSubmitter: number of splits:3
+22/07/05 17:35:14 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1656670722551_0071
+22/07/05 17:35:15 INFO impl.YarnClientImpl: Submitted application application_1656670722551_0071
+22/07/05 17:35:15 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1656670722551_0071/
+22/07/05 17:35:15 INFO mapreduce.Job: Running job: job_1656670722551_0071
+22/07/05 17:35:30 INFO mapreduce.Job: Job job_1656670722551_0071 running in uber mode : false
+22/07/05 17:35:30 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/05 17:35:58 INFO mapreduce.Job:  map 33% reduce 0%
+22/07/05 17:35:59 INFO mapreduce.Job:  map 67% reduce 0%
+22/07/05 17:36:01 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/05 17:36:02 INFO mapreduce.Job: Job job_1656670722551_0071 completed successfully
+22/07/05 17:36:02 INFO mapreduce.Job: Counters: 30
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=406152
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=367
+		HDFS: Number of bytes written=18973
+		HDFS: Number of read operations=12
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=6
+	Job Counters 
+		Launched map tasks=3
+		Other local map tasks=3
+		Total time spent by all maps in occupied slots (ms)=78520
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=78520
+		Total vcore-seconds taken by all map tasks=78520
+		Total megabyte-seconds taken by all map tasks=80404480
+	Map-Reduce Framework
+		Map input records=122
+		Map output records=122
+		Input split bytes=367
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=2221
+		CPU time spent (ms)=16560
+		Physical memory (bytes) snapshot=597753856
+		Virtual memory (bytes) snapshot=6402727936
+		Total committed heap usage (bytes)=346554368
+	File Input Format Counters 
+		Bytes Read=0
+	File Output Format Counters 
+		Bytes Written=18973
+22/07/05 17:36:02 INFO mapreduce.ImportJobBase: Transferred 18.5283 KB in 56.4482 seconds (336.1133 bytes/sec)
+22/07/05 17:36:02 INFO mapreduce.ImportJobBase: Retrieved 122 records.
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/custavro
+Found 4 items
+-rw-r--r--   1 hduser hadoop          0 2022-07-05 17:36 /user/hduser/custavro/_SUCCESS
+-rw-r--r--   1 hduser hadoop       6740 2022-07-05 17:35 /user/hduser/custavro/part-m-00000.avro
+-rw-r--r--   1 hduser hadoop       6507 2022-07-05 17:35 /user/hduser/custavro/part-m-00001.avro
+-rw-r--r--   1 hduser hadoop       5726 2022-07-05 17:35 /user/hduser/custavro/part-m-00002.avro
+
+```
+
+2. Extract the avsc schema file
+
+hadoop jar avro-tools-1.8.1.jar getschema /user/hduser/custavro/part-m-00000.avro > /home/hduser/customer.avsc
+
+``` 
+[hduser@localhost ~]$ hadoop jar avro-tools-1.8.1.jar getschema /user/hduser/custavro/part-m-00000.avro > /home/hduser/customer.avsc
+
+```
+3. It is a json file
+
+cat ~/customer.avsc
+
+``` 
+[hduser@localhost ~]$ cat ~/customer.avsc
+{
+  "type" : "record",
+  "name" : "customers",
+  "doc" : "Sqoop import of customers",
+  "fields" : [ {
+    "name" : "customerNumber",
+    "type" : [ "null", "int" ],
+    "default" : null,
+    "columnName" : "customerNumber",
+    "sqlType" : "4"
+  }, {
+    "name" : "customerName",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "customerName",
+    "sqlType" : "12"
+  }, {
+    "name" : "contactLastName",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "contactLastName",
+    "sqlType" : "12"
+  }, {
+    "name" : "contactFirstName",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "contactFirstName",
+    "sqlType" : "12"
+  }, {
+    "name" : "phone",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "phone",
+    "sqlType" : "12"
+  }, {
+    "name" : "addressLine1",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "addressLine1",
+    "sqlType" : "12"
+  }, {
+    "name" : "addressLine2",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "addressLine2",
+    "sqlType" : "12"
+  }, {
+    "name" : "city",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "city",
+    "sqlType" : "12"
+  }, {
+    "name" : "state",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "state",
+    "sqlType" : "12"
+  }, {
+    "name" : "postalCode",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "postalCode",
+    "sqlType" : "12"
+  }, {
+    "name" : "country",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "country",
+    "sqlType" : "12"
+  }, {
+    "name" : "salesRepEmployeeNumber",
+    "type" : [ "null", "int" ],
+    "default" : null,
+    "columnName" : "salesRepEmployeeNumber",
+    "sqlType" : "4"
+  }, {
+    "name" : "creditLimit",
+    "type" : [ "null", "string" ],
+    "default" : null,
+    "columnName" : "creditLimit",
+    "sqlType" : "3"
+  } ],
+  "tableName" : "customers"
+}
+
+```
+
+4. Store the schema file in a tmp hdfs location
+
+hadoop fs -put -f customer.avsc /tmp/customer.avsc
+
+``` 
+[hduser@localhost ~]$ hadoop fs -put -f customer.avsc /tmp/customer.avsc
+
+```
+5. Create hive table without defining the columns by using the avro schema file (avsc) created in
+the above step, which helps hive create the modified schema where columns might have
+removed/added.
+
+**Iteration 1: Create the external table without mentioning the column info**
+
+DROP TABLE IF EXISTS customeravro;
+
+CREATE EXTERNAL TABLE customeravro
+STORED AS AVRO
+LOCATION '/user/hduser/customeravro'
+TBLPROPERTIES('avro.schema.url'='hdfs:///tmp/customer.avsc');
+
+LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
+
+select customernumber, customername, contactlastname, contactfirstname, phone,addressline1,
+addressline2, city, state, postalcode, country, salesrepemployeenumber, creditlimit from
+customeravro where customernumber=496;
+
+``` 
+hive> DROP TABLE IF EXISTS customeravro;
+OK
+Time taken: 0.036 seconds
+
+hive> CREATE EXTERNAL TABLE customeravro
+    > STORED AS AVRO
+    > LOCATION '/user/hduser/customeravro'
+    > TBLPROPERTIES('avro.schema.url'='hdfs:///tmp/customer.avsc');
+OK
+Time taken: 0.271 seconds
+
+hive> LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
+Loading data to table custdb.customeravro
+OK
+Time taken: 1.156 seconds
+
+hive> select count(*) from customeravro;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220705174410_5ed401e2-1554-4bf6-8d98-2c6c9c5fe40e
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1656670722551_0072, Tracking URL = http://Inceptez:8088/proxy/application_1656670722551_0072/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1656670722551_0072
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-05 17:44:57,640 Stage-1 map = 0%,  reduce = 0%
+2022-07-05 17:45:13,078 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 4.77 sec
+2022-07-05 17:45:26,396 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 8.85 sec
+MapReduce Total cumulative CPU time: 8 seconds 850 msec
+Ended Job = job_1656670722551_0072
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 8.85 sec   HDFS Read: 59884 HDFS Write: 103 SUCCESS
+Total MapReduce CPU Time Spent: 8 seconds 850 msec
+OK
+122
+Time taken: 77.661 seconds, Fetched: 1 row(s)
+
+hive> select customernumber, customername, contactlastname, contactfirstname, phone,addressline1,
+    > addressline2, city, state, postalcode, country, salesrepemployeenumber, creditlimit from
+    > customeravro where customernumber=496;
+OK
+496	Kelly's Gift Shop	Snowden	Tony	+64 9 5555500	Arenales 1938 3'A'	NULL	Auckland  	NULL	NULL	New Zealand	1612	110000.00
+Time taken: 0.318 seconds, Fetched: 1 row(s)
+hive> 
+
+```
+
+**Iteration 2:** 
+
+Alter the source table by removing a column (phone) and add a new column
+(mobile) in the MYSQL -> Update the data with the mobile number -> Import the structure
+changed data in avro format -> drop the hive table -> Create a new table with the modified
+structure in no time.
+
+alter table customers drop column phone;
+
+alter table customers add column mobile bigint;
+
+update customers set mobile=9833339123 where customernumber=496;
+
+``` 
+mysql> alter table customers drop column phone;
+Query OK, 0 rows affected (0.24 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+mysql> alter table customers add column mobile bigint;
+Query OK, 0 rows affected (0.07 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+mysql> update customers set mobile=9833339123 where customernumber=496;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+```
+
+**Run all the steps 1 to 4**
+
+
+sqoop import -Dmapreduce.job.user.classpath.first=true \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/custpayments \
+    --username root \
+    --password Root123$ \
+    --table customers \
+    -m 3 \
+    --split-by customernumber \
+    --target-dir /user/hduser/custavro \
+    --delete-target-dir \
+    --as-avrodatafile;
+
+hadoop jar avro-tools-1.8.1.jar getschema /user/hduser/custavro/part-m-00000.avro > /home/hduser/customer.avsc
+
+cat ~/customer.avsc
+
+hadoop fs -put -f customer.avsc /tmp/customer.avsc
+
+DROP TABLE IF EXISTS customeravro;
+
+CREATE EXTERNAL TABLE customeravro
+STORED AS AVRO
+LOCATION '/user/hduser/customeravro'
+TBLPROPERTIES('avro.schema.url'='hdfs:///tmp/customer.avsc');
+
+LOAD DATA INPATH '/user/hduser/custavro' INTO TABLE customeravro;
+
+Select the schema changed (phone removed and mobile added) data using the below query:
+
+select customernumber, customername, contactlastname, contactfirstname, addressline1,
+addressline2, city, state, postalcode, country, salesrepemployeenumber, creditlimit,mobile from
+customeravro where customernumber=496;
+
+``` 
+hive> select customernumber, customername, contactlastname, contactfirstname, addressline1,
+    > addressline2, city, state, postalcode, country, salesrepemployeenumber, creditlimit,mobile from
+    > customeravro where customernumber=496;
+OK
+496	Kelly's Gift Shop	Snowden	Tony	Arenales 1938 3'A'	NULL	Auckland  	NULL	NULL	New Zealand	1612	110000.00	NULL
+496	Kelly's Gift Shop	Snowden	Tony	Arenales 1938 3'A'	NULL	Auckland  	NULL	NULL	New Zealand	1612	110000.00	9833339123
+Time taken: 0.265 seconds, Fetched: 2 row(s)
+
+```
+
