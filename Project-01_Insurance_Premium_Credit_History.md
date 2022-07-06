@@ -52,3 +52,14 @@ Low Latency Query processing
 17. Write queries to build cubes at different levels to aggregate the data in realtime to populate in
 the report such as average age, sum of bill amount, average bill amount etc.,
 
+## Prerequisites:
+
+Ensure that the following services are up and running
+
+1. Start Hadoop
+2. history server
+3. mysql service
+4. hive in mr mode
+5. hive metastore
+6. hbase
+7. phoenix client
