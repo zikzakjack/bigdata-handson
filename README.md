@@ -8,4 +8,3 @@ I intend to use this repo to archive my snippets which would be frequently used 
 # Projects
 
 1. [Insurance Premium based on Credit History](Project-01_Insurance_Premium_Credit_History.md)
-2. 

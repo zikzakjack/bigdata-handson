@@ -19,3 +19,7 @@ platform. Data transformation and processing such as aggregation, filtering, gro
 Batch data and Phoenix for online data access on Hbase for realtime data aggregation and reporting as
 per the reporting needs.
 
+## Architecture
+
+![Project Architecture](resources/images/Project-01_Architecture.png)
+
