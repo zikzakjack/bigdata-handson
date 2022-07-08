@@ -559,3 +559,409 @@ Time taken: 0.177 seconds, Fetched: 12 row(s)
 
 ```
 
+### ETL / ELT using Hive
+
+3. Filter the cst and pst tables with the billamt > 0 and union all both dataset and load into a
+single table called insure. using create table as select (CTAS)
+
+CREATE TABLE insure.credits_all AS
+SELECT * FROM insure.credits_pst WHERE billamt > 0
+UNION ALL
+SELECT * FROM insure.credits_cst WHERE billamt>0;
+
+SHOW TABLES;
+
+DESCRIBE credits_all;
+
+SELECT COUNT(*) FROM credits_all;
+
+``` 
+hive> CREATE TABLE insure.credits_all AS
+    > SELECT * FROM insure.credits_pst WHERE billamt > 0
+    > UNION ALL
+    > SELECT * FROM insure.credits_cst WHERE billamt>0;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220708161825_d76d0eb4-658c-44a2-b436-08134f242666
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0003, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0003/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0003
+Hadoop job information for Stage-1: number of mappers: 2; number of reducers: 0
+2022-07-08 16:19:40,868 Stage-1 map = 0%,  reduce = 0%
+2022-07-08 16:20:07,808 Stage-1 map = 50%,  reduce = 0%, Cumulative CPU 23.4 sec
+2022-07-08 16:20:08,883 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 26.69 sec
+MapReduce Total cumulative CPU time: 26 seconds 690 msec
+Ended Job = job_1657271823979_0003
+Stage-4 is filtered out by condition resolver.
+Stage-3 is selected by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Launching Job 3 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0004, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0004/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0004
+Hadoop job information for Stage-3: number of mappers: 1; number of reducers: 0
+2022-07-08 16:20:56,720 Stage-3 map = 0%,  reduce = 0%
+2022-07-08 16:21:09,841 Stage-3 map = 100%,  reduce = 0%, Cumulative CPU 6.39 sec
+MapReduce Total cumulative CPU time: 6 seconds 390 msec
+Ended Job = job_1657271823979_0004
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/insure.db/credits_all
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 2   Cumulative CPU: 26.69 sec   HDFS Read: 478498 HDFS Write: 441423 SUCCESS
+Stage-Stage-3: Map: 1   Cumulative CPU: 6.39 sec   HDFS Read: 443888 HDFS Write: 441263 SUCCESS
+Total MapReduce CPU Time Spent: 33 seconds 80 msec
+OK
+Time taken: 168.963 seconds
+
+hive> SHOW TABLES;
+OK
+credits_all
+credits_cst
+credits_pst
+Time taken: 0.089 seconds, Fetched: 3 row(s)
+
+hive> DESCRIBE credits_all;
+OK
+id                  	bigint              	                    
+lmt                 	int                 	                    
+sex                 	int                 	                    
+edu                 	int                 	                    
+marital             	int                 	                    
+age                 	int                 	                    
+pay                 	int                 	                    
+billamt             	float               	                    
+defaulter           	int                 	                    
+issuerid1           	int                 	                    
+issuerid2           	int                 	                    
+tz                  	string              	                    
+Time taken: 0.176 seconds, Fetched: 12 row(s)
+
+hive> SELECT COUNT(*) FROM credits_all;
+OK
+9087
+Time taken: 0.468 seconds, Fetched: 1 row(s)
+
+```
+
+4. Note: We can merge the step 2 and 3 and make the above 2 sqoop statements as 1 sqoop
+statement to directly import data into the insure.credits_all by writing –query with billamt > 0
+filter and union of both credits_pst and credits_cst at the MYSQL level itself finally convert the
+insure.cstpstreorder into external table. If you have some time try it out..
+
+SELECT * FROM credits_pst WHERE billamt > 0
+UNION ALL
+SELECT * FROM credits_cst WHERE billamt > 0
+
+
+sqoop import \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/customersdb \
+    --username root \
+    --password Root123$ \
+    --query     'WITH credits_all AS (SELECT * FROM credits_pst WHERE billamt > 0 UNION ALL SELECT * FROM credits_cst WHERE billamt>0) SELECT * FROM credits_all WHERE $CONDITIONS' \
+    -m 1 \
+    --target-dir /user/hduser/projects/creditcard_insurance/credits_all_temp/ \
+    --delete-target-dir \
+    --split-by id \
+    --hive-import \
+    --hive-table insure.credits_all_temp \
+    --hive-overwrite \
+    --map-column-hive id=bigint,billamt=float;
+
+SHOW TABLES;
+
+DESCRIBE credits_all_temp;
+
+SELECT COUNT(*) FROM credits_all_temp;
+
+``` 
+[hduser@localhost ~]$ sqoop import \
+>     --driver com.mysql.cj.jdbc.Driver \
+>     --connect jdbc:mysql://localhost/customersdb \
+>     --username root \
+>     --password Root123$ \
+>     --query     'WITH credits_all AS (SELECT * FROM credits_pst WHERE billamt > 0 UNION ALL SELECT * FROM credits_cst WHERE billamt>0) SELECT * FROM credits_all WHERE $CONDITIONS' \
+>     -m 1 \
+>     --target-dir /user/hduser/projects/creditcard_insurance/credits_all_temp/ \
+>     --delete-target-dir \
+>     --split-by id \
+>     --hive-import \
+>     --hive-table insure.credits_all_temp \
+>     --hive-overwrite \
+>     --map-column-hive id=bigint,billamt=float;
+Warning: /usr/local/hbase does not exist! HBase imports will fail.
+Please set $HBASE_HOME to the root of your HBase installation.
+Warning: /usr/local/sqoop/../hcatalog does not exist! HCatalog jobs will fail.
+Please set $HCAT_HOME to the root of your HCatalog installation.
+Warning: /usr/local/sqoop/../accumulo does not exist! Accumulo imports will fail.
+Please set $ACCUMULO_HOME to the root of your Accumulo installation.
+Warning: /usr/local/sqoop/../zookeeper does not exist! Accumulo imports will fail.
+Please set $ZOOKEEPER_HOME to the root of your Zookeeper installation.
+22/07/08 16:42:11 INFO sqoop.Sqoop: Running Sqoop version: 1.4.6
+22/07/08 16:42:11 WARN tool.BaseSqoopTool: Setting your password on the command-line is insecure. Consider using -P instead.
+22/07/08 16:42:11 INFO tool.BaseSqoopTool: Using Hive-specific delimiters for output. You can override
+22/07/08 16:42:11 INFO tool.BaseSqoopTool: delimiters with --fields-terminated-by, etc.
+22/07/08 16:42:11 WARN sqoop.ConnFactory: Parameter --driver is set to an explicit driver however appropriate connection manager is not being set (via --connection-manager). Sqoop is going to fall back to org.apache.sqoop.manager.GenericJdbcManager. Please specify explicitly which connection manager should be used next time.
+22/07/08 16:42:11 INFO manager.SqlManager: Using default fetchSize of 1000
+22/07/08 16:42:11 INFO tool.CodeGenTool: Beginning code generation
+22/07/08 16:42:12 INFO manager.SqlManager: Executing SQL statement: WITH credits_all AS (SELECT * FROM credits_pst WHERE billamt > 0 UNION ALL SELECT * FROM credits_cst WHERE billamt>0) SELECT * FROM credits_all WHERE  (1 = 0) 
+22/07/08 16:42:12 INFO manager.SqlManager: Executing SQL statement: WITH credits_all AS (SELECT * FROM credits_pst WHERE billamt > 0 UNION ALL SELECT * FROM credits_cst WHERE billamt>0) SELECT * FROM credits_all WHERE  (1 = 0) 
+22/07/08 16:42:12 INFO orm.CompilationManager: HADOOP_MAPRED_HOME is /usr/local/hadoop
+Note: /tmp/sqoop-hduser/compile/f43466a7c65a4d47e89b49afc6c21643/QueryResult.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+22/07/08 16:42:15 INFO orm.CompilationManager: Writing jar file: /tmp/sqoop-hduser/compile/f43466a7c65a4d47e89b49afc6c21643/QueryResult.jar
+22/07/08 16:42:16 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/08 16:42:17 INFO tool.ImportTool: Destination directory /user/hduser/projects/creditcard_insurance/credits_all_temp is not present, hence not deleting.
+22/07/08 16:42:17 INFO mapreduce.ImportJobBase: Beginning query import.
+22/07/08 16:42:17 INFO Configuration.deprecation: mapred.jar is deprecated. Instead, use mapreduce.job.jar
+22/07/08 16:42:17 INFO Configuration.deprecation: mapred.map.tasks is deprecated. Instead, use mapreduce.job.maps
+22/07/08 16:42:18 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/08 16:42:22 INFO db.DBInputFormat: Using read commited transaction isolation
+22/07/08 16:42:22 INFO mapreduce.JobSubmitter: number of splits:1
+22/07/08 16:42:22 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1657271823979_0005
+22/07/08 16:42:23 INFO impl.YarnClientImpl: Submitted application application_1657271823979_0005
+22/07/08 16:42:23 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1657271823979_0005/
+22/07/08 16:42:23 INFO mapreduce.Job: Running job: job_1657271823979_0005
+22/07/08 16:42:35 INFO mapreduce.Job: Job job_1657271823979_0005 running in uber mode : false
+22/07/08 16:42:35 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/08 16:42:47 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/08 16:42:48 INFO mapreduce.Job: Job job_1657271823979_0005 completed successfully
+22/07/08 16:42:48 INFO mapreduce.Job: Counters: 30
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=133858
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=87
+		HDFS: Number of bytes written=423089
+		HDFS: Number of read operations=4
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=2
+	Job Counters 
+		Launched map tasks=1
+		Other local map tasks=1
+		Total time spent by all maps in occupied slots (ms)=9155
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=9155
+		Total vcore-seconds taken by all map tasks=9155
+		Total megabyte-seconds taken by all map tasks=9374720
+	Map-Reduce Framework
+		Map input records=9087
+		Map output records=9087
+		Input split bytes=87
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=967
+		CPU time spent (ms)=4840
+		Physical memory (bytes) snapshot=182198272
+		Virtual memory (bytes) snapshot=2124414976
+		Total committed heap usage (bytes)=136314880
+	File Input Format Counters 
+		Bytes Read=0
+	File Output Format Counters 
+		Bytes Written=423089
+22/07/08 16:42:48 INFO mapreduce.ImportJobBase: Transferred 413.1729 KB in 30.5185 seconds (13.5384 KB/sec)
+22/07/08 16:42:48 INFO mapreduce.ImportJobBase: Retrieved 9087 records.
+22/07/08 16:42:48 INFO manager.SqlManager: Executing SQL statement: WITH credits_all AS (SELECT * FROM credits_pst WHERE billamt > 0 UNION ALL SELECT * FROM credits_cst WHERE billamt>0) SELECT * FROM credits_all WHERE  (1 = 0) 
+22/07/08 16:42:48 INFO manager.SqlManager: Executing SQL statement: WITH credits_all AS (SELECT * FROM credits_pst WHERE billamt > 0 UNION ALL SELECT * FROM credits_cst WHERE billamt>0) SELECT * FROM credits_all WHERE  (1 = 0) 
+22/07/08 16:42:48 INFO hive.HiveImport: Loading uploaded data into Hive
+22/07/08 16:42:51 INFO hive.HiveImport: which: no hbase in (/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/lib/jvm/java-1.8.0-openjdk:/usr/lib/jvm/java-1.8.0-openjdk/jre//bin:/usr/local/hadoop/bin:/usr/local/hadoop/sbin:/usr/local/sqoop/bin:/usr/local/hive/bin:/usr/local/hbase/bin:/usr/local/zookeeper/bin:/usr/local/phoenix/bin:/usr/local/kafka/bin:/usr/local/nifi/bin:/usr/local/spark/bin:/usr/local/spark/sbin:/tmp/inceptez/bin/:/usr/local/oozie/bin:/tmp/bin:/usr/local/oozie/bin:/usr/local/pycharm/bin/:/home/hduser/.local/bin:/home/hduser/bin:/usr/lib/jvm/java-1.8.0-openjdk:/usr/lib/jvm/java-1.8.0-openjdk/jre//bin:/usr/local/hadoop/bin:/usr/local/hadoop/sbin:/usr/local/sqoop/bin:/usr/local/hive/bin:/usr/local/hbase/bin:/usr/local/zookeeper/bin:/usr/local/phoenix/bin:/usr/local/kafka/bin:/usr/local/nifi/bin:/usr/local/spark/bin:/usr/local/spark/sbin:/tmp/inceptez/bin/:/usr/local/oozie/bin:/tmp/bin:/usr/local/oozie/bin:/usr/local/pycharm/bin/)
+22/07/08 16:42:58 INFO hive.HiveImport: SLF4J: Class path contains multiple SLF4J bindings.
+22/07/08 16:42:58 INFO hive.HiveImport: SLF4J: Found binding in [jar:file:/usr/local/hive/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+22/07/08 16:42:58 INFO hive.HiveImport: SLF4J: Found binding in [jar:file:/usr/local/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+22/07/08 16:42:58 INFO hive.HiveImport: SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+22/07/08 16:42:58 INFO hive.HiveImport: SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+22/07/08 16:43:01 INFO hive.HiveImport: 
+22/07/08 16:43:01 INFO hive.HiveImport: Logging initialized using configuration in jar:file:/usr/local/hive/lib/hive-common-2.3.9.jar!/hive-log4j2.properties Async: true
+22/07/08 16:43:10 INFO hive.HiveImport: OK
+22/07/08 16:43:10 INFO hive.HiveImport: Time taken: 6.424 seconds
+22/07/08 16:43:11 INFO hive.HiveImport: Loading data to table insure.credits_all_temp
+22/07/08 16:43:12 INFO hive.HiveImport: OK
+22/07/08 16:43:12 INFO hive.HiveImport: Time taken: 2.16 seconds
+22/07/08 16:43:12 INFO hive.HiveImport: Hive import complete.
+
+hive> SHOW TABLES;
+OK
+credits_all
+credits_all_temp
+credits_cst
+credits_pst
+Time taken: 0.087 seconds, Fetched: 4 row(s)
+
+hive> DESCRIBE credits_all_temp;
+OK
+id                  	bigint              	                    
+lmt                 	int                 	                    
+sex                 	int                 	                    
+edu                 	int                 	                    
+marital             	int                 	                    
+age                 	int                 	                    
+pay                 	int                 	                    
+billamt             	float               	                    
+defaulter           	int                 	                    
+issuerid1           	int                 	                    
+issuerid2           	int                 	                    
+tz                  	string              	                    
+Time taken: 0.216 seconds, Fetched: 12 row(s)
+
+hive> SELECT COUNT(*) FROM credits_all_temp;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220708164418_c2786a9a-d758-4477-b8ae-0ce2fa40fd04
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0006, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0006/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0006
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-08 16:45:12,461 Stage-1 map = 0%,  reduce = 0%
+2022-07-08 16:45:29,690 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.67 sec
+2022-07-08 16:45:41,624 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 11.07 sec
+MapReduce Total cumulative CPU time: 11 seconds 70 msec
+Ended Job = job_1657271823979_0006
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 11.07 sec   HDFS Read: 432175 HDFS Write: 104 SUCCESS
+Total MapReduce CPU Time Spent: 11 seconds 70 msec
+OK
+9087
+Time taken: 84.197 seconds, Fetched: 1 row(s)
+```
+
+5. Create another external table insure.cstpstpenality in orc file format (show create table
+insure.cstpstreorder) to get the ddl of the above table and alter as per the below columns for
+faster table creation and populate with the below ETL transformations applied in the above
+table cstpstreorder as given below
+
+CREATE EXTERNAL TABLE penalties (id BIGINT, issuerid1 INT, issuerid2 INT, lmt INT, newlmt INT, sex INT, edu INT, marital INT, pay INT, billamt FLOAT, newbillamt FLOAT, defaulter INT)
+STORED AS ORC
+LOCATION '/user/hduser/projects/creditcard_insurance/penalties';
+
+INSERT INTO TABLE penalties SELECT id, issuerid1, issuerid2, lmt, CASE defaulter WHEN 1
+THEN lmt - (lmt * 0.04) ELSE lmt END AS newlmt, sex, edu, marital, pay, billamt, CASE defaulter WHEN
+1 THEN billamt + (billamt * 0.02) ELSE billamt END AS newbillamt, defaulter
+FROM credits_all;
+
+DESCRIBE penalties;
+
+SHOW CREATE TABLE penalties;
+
+SELECT COUNT(*) FROM penalties;
+
+hadoop fs -ls /user/hduser/projects/creditcard_insurance/penalties
+
+``` 
+hive> CREATE EXTERNAL TABLE penalties (id BIGINT, issuerid1 INT, issuerid2 INT, lmt INT, newlmt INT, sex INT, edu INT, marital INT, pay INT, billamt FLOAT, newbillamt FLOAT, defaulter INT)
+    > STORED AS ORC
+    > LOCATION '/user/hduser/projects/creditcard_insurance/penalties';
+OK
+Time taken: 0.293 seconds
+
+hive> INSERT INTO TABLE penalties SELECT id, issuerid1, issuerid2, lmt, CASE defaulter WHEN 1
+    > THEN lmt - (lmt * 0.04) ELSE lmt END AS newlmt, sex, edu, marital, pay, billamt, CASE defaulter WHEN
+    > 1 THEN billamt + (billamt * 0.02) ELSE billamt END AS newbillamt, defaulter
+    > FROM credits_all;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220708230112_32ab97f8-c1bd-4387-911b-44ce6a6121f3
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0007, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0007/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0007
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-08 23:02:03,322 Stage-1 map = 0%,  reduce = 0%
+2022-07-08 23:02:19,601 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 11.79 sec
+MapReduce Total cumulative CPU time: 11 seconds 790 msec
+Ended Job = job_1657271823979_0007
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/penalties/.hive-staging_hive_2022-07-08_23-01-12_270_6608941167670410851-1/-ext-10000
+Loading data to table insure.penalties
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 11.79 sec   HDFS Read: 448640 HDFS Write: 115948 SUCCESS
+Total MapReduce CPU Time Spent: 11 seconds 790 msec
+OK
+Time taken: 71.013 seconds
+
+hive> DESCRIBE penalties;
+OK
+id                  	bigint              	                    
+issuerid1           	int                 	                    
+issuerid2           	int                 	                    
+lmt                 	int                 	                    
+newlmt              	int                 	                    
+sex                 	int                 	                    
+edu                 	int                 	                    
+marital             	int                 	                    
+pay                 	int                 	                    
+billamt             	float               	                    
+newbillamt          	float               	                    
+defaulter           	int                 	                    
+Time taken: 0.18 seconds, Fetched: 12 row(s)
+
+hive> SHOW CREATE TABLE penalties;
+OK
+CREATE EXTERNAL TABLE `penalties`(
+  `id` bigint, 
+  `issuerid1` int, 
+  `issuerid2` int, 
+  `lmt` int, 
+  `newlmt` int, 
+  `sex` int, 
+  `edu` int, 
+  `marital` int, 
+  `pay` int, 
+  `billamt` float, 
+  `newbillamt` float, 
+  `defaulter` int)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.ql.io.orc.OrcSerde' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.orc.OrcInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat'
+LOCATION
+  'hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/penalties'
+TBLPROPERTIES (
+  'transient_lastDdlTime'='1657301542')
+Time taken: 0.308 seconds, Fetched: 23 row(s)
+
+hive> SELECT COUNT(*) FROM penalties;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220708230336_d1729edc-06b3-4384-83e1-e3a03d064484
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0008, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0008/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0008
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-08 23:04:22,955 Stage-1 map = 0%,  reduce = 0%
+2022-07-08 23:04:39,201 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 7.73 sec
+2022-07-08 23:04:52,258 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 12.77 sec
+MapReduce Total cumulative CPU time: 12 seconds 770 msec
+Ended Job = job_1657271823979_0008
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 12.77 sec   HDFS Read: 25686 HDFS Write: 104 SUCCESS
+Total MapReduce CPU Time Spent: 12 seconds 770 msec
+OK
+9087
+Time taken: 77.596 seconds, Fetched: 1 row(s)
+
+[hduser@localhost ~]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/penalties
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop     115870 2022-07-08 23:02 /user/hduser/projects/creditcard_insurance/penalties/000000_0
+
+```
