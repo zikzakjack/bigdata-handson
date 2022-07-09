@@ -2105,3 +2105,114 @@ mysql> select count(*) from middlegrade;
 1 row in set (0.01 sec)
 
 ```
+
+## Complex type ETL using Hive
+
+**Create a Complex type table to understand how to group the like issuers in a single row using array,
+struct and map.**
+
+use insure;
+
+Drop table if exists insuranceorc_collection ;
+
+Create table insuranceorc_collection
+row format delimited collection items terminated by ', '
+stored as orcfile
+location '/user/hduser/projects/creditcard_insurance/insuranceorc_collection/'
+as select issuerid,named_struct('marital',marital,'sex',sex,'grade',grade) as personalinfo,
+collect_set(networkname) as networkname, collect_set(networkurl) networkurl
+from insuranceorc group by issuerid,named_struct('marital',marital,'sex',sex,'grade',grade);
+
+alter table insuranceorc_collection SET TBLPROPERTIES('EXTERNAL'='TRUE');
+
+**Select only the issuerid,grade,second networkname,second networkurl where we have more than 1
+networkname and networkurl accessed by the customers.**
+
+Select issuerid,personalinfo.grade,networkname[1],networkurl[1] from insuranceorc_collection where
+size(networkname)=2 and size(networkurl)=2;
+
+Select personalinfo from insuranceorc_collection where size(networkname)=2 and size(networkurl)=2;
+
+``` 
+hive> Create table insuranceorc_collection
+    > row format delimited collection items terminated by ', '
+    > stored as orcfile
+    > location '/user/hduser/projects/creditcard_insurance/insuranceorc_collection/'
+    > as select issuerid,named_struct('marital',marital,'sex',sex,'grade',grade) as personalinfo,
+    > collect_set(networkname) as networkname, collect_set(networkurl) networkurl
+    > from insuranceorc group by issuerid,named_struct('marital',marital,'sex',sex,'grade',grade);
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709153257_c85c9c70-b1ce-42e0-ac2c-6dc3ce7b1330
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0035, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0035/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0035
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-09 15:33:38,716 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 15:33:52,795 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 9.15 sec
+2022-07-09 15:34:04,674 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 16.06 sec
+MapReduce Total cumulative CPU time: 16 seconds 60 msec
+Ended Job = job_1657271823979_0035
+Moving data to directory /user/hduser/projects/creditcard_insurance/insuranceorc_collection
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 16.06 sec   HDFS Read: 41816 HDFS Write: 8261 SUCCESS
+Total MapReduce CPU Time Spent: 16 seconds 60 msec
+OK
+Time taken: 70.126 seconds
+
+hive> alter table insuranceorc_collection SET TBLPROPERTIES('EXTERNAL'='TRUE');
+OK
+Time taken: 0.173 seconds
+
+hive> Select issuerid,personalinfo.grade,networkname[1],networkurl[1] from insuranceorc_collection where
+    > size(networkname)=2 and size(networkurl)=2;
+OK
+1110311103	middle grade	First Commonwealth - Individual	https://dentalexchange.guardianlife.com/providersearch
+1147411474	lower grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1246512465	lower middle grade	Assurant Dental Network	http://assurant.go2dental.com/member/dental_search/srchinp.cgi?plan_number=45&plan_state=45_
+1246512465	lower grade	Assurant Dental Network	http://assurant.go2dental.com/member/dental_search/srchinp.cgi?plan_number=45&plan_state=45_
+1246512465	lower middle grade	Assurant Dental Network	http://assurant.go2dental.com/member/dental_search/srchinp.cgi?plan_number=45&plan_state=45_
+1371113711	middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1371113711	middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1412514125	lower grade	Lincoln DentalConnect?	"http://lfg.go2dental.com/member/dental_search/searchprov.cgi?P=LFGDentalConnect&Network=L"""
+1412514125	lower middle grade	Lincoln DentalConnect?	"http://lfg.go2dental.com/member/dental_search/searchprov.cgi?P=LFGDentalConnect&Network=L"""
+1418614186	lower grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1418614186	lower grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1418614186	lower middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1572015720	lower middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1572015720	middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1572015720	lower grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1598015980	lower grade	HumanaDental PPO/Traditional Preferred	https://www.humana.com/finder/search?customerId=1085&pfpkey=317
+1604916049	lower middle grade	MO IEX Compass	http://www.uhc.com/find-a-physician/xmocompass
+1604916049	middle grade	MO IEX Compass	http://www.uhc.com/find-a-physician/xmocompass
+1620416204	lower grade	InHealth Network	http://inhealthohio.org/you-need-to-know/provider-network
+1620416204	lower middle grade	InHealth Network	http://inhealthohio.org/you-need-to-know/provider-network
+1620416204	lower grade	InHealth Network	http://inhealthohio.org/you-need-to-know/provider-network
+1620416204	middle grade	InHealth Network	http://inhealthohio.org/you-need-to-know/provider-network
+1672416724	lower grade	IL IEX Compass	http://www.uhc.com/find-a-physician/xilcompass
+1683716837	lower middle grade	DentegraStar	https://www.dentegra.com/find-a-dentist
+1684216842	lower middle grade	BlueSelect	https://providersearch.floridablue.com/providersearch/pub/marketplace.htm
+1684216842	middle grade	BlueSelect	https://providersearch.floridablue.com/providersearch/pub/marketplace.htm
+1759517595	lower middle grade	Combined Dental Network	www.dentemax.com; www.stratose.com/find-a-provider
+1791117911	middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1791117911	lower middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1791917919	lower middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1791917919	middle grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1791917919	lower grade	Delta Dental	http://www.deltadental.com/DentistSearch/DentistSearchController.ccl
+1815618156	lower grade	Lincoln DentalConnect?	"http://lfg.go2dental.com/member/dental_search/searchprov.cgi?P=LFGDentalConnect&Network=L"""
+1930419304	middle grade	New Hampshire Statewide Network	http://www.healthoptions.org/Search-provider
+1941919419	lower grade	Connection Dental and Stratose	https://www.kclgroupbenefits.com/services/providers.aspx
+1941919419	lower grade	Connection Dental and Stratose	https://www.kclgroupbenefits.com/services/providers.aspx
+2012820128	middle grade	Combined Dental Network	www.TDAdental.com; www.stratose.com/find-a-provider
+2012820128	lower grade	Combined Dental Network	www.TDAdental.com; www.stratose.com/find-a-provider
+2012820128	lower middle grade	Combined Dental Network	www.TDAdental.com; www.stratose.com/find-a-provider
+Time taken: 0.459 seconds, Fetched: 39 row(s)
+
+```
