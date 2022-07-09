@@ -1514,5 +1514,323 @@ DEDelaware
 DCDistrict of Columbia
 FLFlorida             
 
+```
+
+**Create a managed table on top of the hive output defaulter’s dataset created in step 5.b given above.**
+
+USE insure;
+
+CREATE TABLE defaulters (id INT, IssuerId1 INT, IssuerId2 INT, lmt INT, newlmt DOUBLE, sex INT, edu INT, marital INT, pay INT, billamt INT, newbillamt FLOAT, defaulter INT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+LOCATION '/user/hduser/projects/creditcard_insurance/defaultersout';
+
+SELECT COUNT(*) FROM defaulters;
+
+``` 
+hive> CREATE TABLE defaulters (id INT, IssuerId1 INT, IssuerId2 INT, lmt INT, newlmt DOUBLE, sex INT, edu INT, marital INT, pay INT, billamt INT, newbillamt FLOAT, defaulter INT)
+    > ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+    > LOCATION '/user/hduser/projects/creditcard_insurance/defaultersout';
+OK
+Time taken: 0.237 seconds
+
+hive> SELECT COUNT(*) FROM defaulters;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709140928_e4df43ff-ace8-4157-8ef2-78a6d166f5e7
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0020, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0020/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0020
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-09 14:10:10,366 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 14:10:24,560 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.72 sec
+2022-07-09 14:10:36,321 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 11.56 sec
+MapReduce Total cumulative CPU time: 11 seconds 560 msec
+Ended Job = job_1657271823979_0020
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 11.56 sec   HDFS Read: 123218 HDFS Write: 104 SUCCESS
+Total MapReduce CPU Time Spent: 11 seconds 560 msec
+OK
+2022
+Time taken: 68.882 seconds, Fetched: 1 row(s)
 
 ```
+
+**Create a final managed table (later convert to external table) in orc with snappy compression and load
+the above 2 tables joined by applying different functions. This table should not allow duplicates
+when it is empty or if not using overwrite option.**
+
+
+CREATE TABLE insurancestg (IssuerId int, BusinessYear int, StateCode string, statedesc string, 
+SourceName string, NetworkName string, NetworkURL string, RowNumber int, MarketCoverage string, 
+DentalOnlyPlan string, id int, lmt int, newlmt int, reduced_lmt int, sex varchar(6), grade varchar(20), marital int, 
+pay int, billamt int, newbillamt float, penality float, defaulter int)
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY ', '
+LOCATION '/user/hduser/projects/creditcard_insurance/insurancestg';
+
+INSERT OVERWRITE TABLE insurancestg SELECT CONCAT(i.IssuerId1, i.IssuerId2) as issuerid, 
+i.businessyear, i.statecode, s.statedesc as statedesc, i.sourcename, 
+i.networkname, i.networkurl, i.rownumber, i.marketcoverage, i.dentalonlyplan, 
+d.id, d.lmt, d.newlmt, d.newlmt-d.lmt as reduced_lmt, case when d.sex=1 then 'male' else 'female' end as sex, 
+case when d.edu=1 then 'lower grade' when d.edu=2 then 'lower middle grade' when d.edu=3 then
+'middle grade' when d.edu=4 then 'higher grade' when d.edu=5 then 'doctrate grade' end as grade, d.marital, d.pay, d.billamt, d.newbillamt, d.newbillamt-d.billamt as penality, d.defaulter
+from insurance_temp i inner join defaulters d
+on (i.IssuerId1=d.IssuerId1 and i.IssuerId2=d.IssuerId2)
+inner join state_master s
+on (i.statecode=s.statecd);
+
+hadoop fs -rm -r -f /user/hduser/projects/creditcard_insurance/insuranceorc;
+
+drop table if exists insuranceorc;
+
+CREATE TABLE insuranceorc (IssuerId int, BusinessYear int, StateCode string, statedesc string, SourceName
+string, NetworkName string, NetworkURL string, RowNumber int, MarketCoverage string, DentalOnlyPlan
+string, id int, lmt int, newlmt int, reduced_lmt int, sex varchar(6), grade varchar(20), marital int, pay
+int, billamt int, newbillamt float, penality int, defaulter int)
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY ', '
+STORED AS ORC
+LOCATION '/user/hduser/projects/creditcard_insurance/insuranceorc'
+TBLPROPERTIES ("immutable"="true", "orc.compress"="SNAPPY");
+
+Insert into insuranceorc select * from insurancestg where issuerid is not null;
+
+**Retry running the above same insert query once again and see what happens??
+If you get the below error then drop the above table and recreate and insert.**
+
+FAILED: SemanticException [Error 10256]: Inserting into a non-empty immutable table is not allowed
+insuranceorc
+
+**Convert the above table from managed to external, usually we use the below statement if we can’t
+create external table in the initial stage itself for example sqoop import hive table can’t be created as
+external initially.**
+
+alter table insuranceorc SET TBLPROPERTIES('EXTERNAL'='TRUE');
+
+**write common table expression queries in hive**
+
+with 
+    T1 as ( select max(penality) as penalitymale from insuranceorc where sex='male'), 
+    T2 as ( select max(penality) as penalityfemale from insuranceorc where sex='female')
+select penalitymale, penalityfemale from T1 inner join T2
+ON 1=1;
+
+``` 
+hive> CREATE TABLE insurancestg (IssuerId int, BusinessYear int, StateCode string, statedesc string, 
+    > SourceName string, NetworkName string, NetworkURL string, RowNumber int, MarketCoverage string, 
+    > DentalOnlyPlan string, id int, lmt int, newlmt int, reduced_lmt int, sex varchar(6), grade varchar(20), marital int, 
+    > pay int, billamt int, newbillamt float, penality float, defaulter int)
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY ', '
+    > LOCATION '/user/hduser/projects/creditcard_insurance/insurancestg';
+OK
+Time taken: 0.237 seconds
+hive> 
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/insurancestg
+
+hive> INSERT OVERWRITE TABLE insurancestg SELECT CONCAT(i.IssuerId1, i.IssuerId2) as issuerid, 
+    > i.businessyear, i.statecode, s.statedesc as statedesc, i.sourcename, 
+    > i.networkname, i.networkurl, i.rownumber, i.marketcoverage, i.dentalonlyplan, 
+    > d.id, d.lmt, d.newlmt, d.newlmt-d.lmt as reduced_lmt, case when d.sex=1 then 'male' else 'female' end as sex, 
+    > case when d.edu=1 then 'lower grade' when d.edu=2 then 'lower middle grade' when d.edu=3 then
+    > 'middle grade' when d.edu=4 then 'higher grade' when d.edu=5 then 'doctrate grade' end as grade, d.marital, d.pay, d.billamt, d.newbillamt, d.newbillamt-d.billamt as penality, d.defaulter
+    > from insurance i inner join defaulters d
+    > on (i.IssuerId1=d.IssuerId1 and i.IssuerId2=d.IssuerId2)
+    > inner join state_master s
+    > on (i.statecode=s.statecd);
+No Stats for insure@insurance, Columns: dentalonlyplan, networkname, rownumber, businessyear, sourcename, statecode, issuerid1, issuerid2, networkurl, marketcoverage
+No Stats for insure@defaulters, Columns: marital, lmt, billamt, sex, edu, pay, defaulter, id, issuerid1, issuerid2, newlmt, newbillamt
+No Stats for insure@state_master, Columns: statedesc, statecd
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709142436_3a2d90c2-874e-4773-b5a5-7dddfa7e6cd9
+Total jobs = 1
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/local/hive/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+2022-07-09 14:24:57	Starting to launch local task to process map join;	maximum memory = 477626368
+2022-07-09 14:25:01	Dump the side-table for tag: 1 with group count: 51 into file: file:/tmp/hduser/0b265da6-06bd-4c2f-8c44-1e48704e1424/hive_2022-07-09_14-24-36_614_296737652532275489-1/-local-10003/HashTable-Stage-6/MapJoin-mapfile01--.hashtable
+2022-07-09 14:25:01	Uploaded 1 File to: file:/tmp/hduser/0b265da6-06bd-4c2f-8c44-1e48704e1424/hive_2022-07-09_14-24-36_614_296737652532275489-1/-local-10003/HashTable-Stage-6/MapJoin-mapfile01--.hashtable (2412 bytes)
+2022-07-09 14:25:01	Dump the side-table for tag: 0 with group count: 0 into file: file:/tmp/hduser/0b265da6-06bd-4c2f-8c44-1e48704e1424/hive_2022-07-09_14-24-36_614_296737652532275489-1/-local-10003/HashTable-Stage-6/MapJoin-mapfile10--.hashtable
+2022-07-09 14:25:01	Uploaded 1 File to: file:/tmp/hduser/0b265da6-06bd-4c2f-8c44-1e48704e1424/hive_2022-07-09_14-24-36_614_296737652532275489-1/-local-10003/HashTable-Stage-6/MapJoin-mapfile10--.hashtable (260 bytes)
+2022-07-09 14:25:01	End of local task; Time Taken: 3.576 sec.
+Execution completed successfully
+MapredLocal task succeeded
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0021, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0021/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0021
+Hadoop job information for Stage-6: number of mappers: 1; number of reducers: 0
+2022-07-09 14:25:46,072 Stage-6 map = 0%,  reduce = 0%
+2022-07-09 14:26:01,971 Stage-6 map = 100%,  reduce = 0%, Cumulative CPU 9.8 sec
+MapReduce Total cumulative CPU time: 9 seconds 800 msec
+Ended Job = job_1657271823979_0021
+Loading data to table insure.insurancestg
+MapReduce Jobs Launched: 
+Stage-Stage-6: Map: 1   Cumulative CPU: 9.8 sec   HDFS Read: 20287 HDFS Write: 45 SUCCESS
+Total MapReduce CPU Time Spent: 9 seconds 800 msec
+OK
+Time taken: 88.037 seconds
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/insurancestg
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop          0 2022-07-09 14:26 /user/hduser/projects/creditcard_insurance/insurancestg/000000_0
+
+hive> CREATE TABLE insuranceorc (IssuerId int, BusinessYear int, StateCode string, statedesc string, SourceName
+    > string, NetworkName string, NetworkURL string, RowNumber int, MarketCoverage string, DentalOnlyPlan
+    > string, id int, lmt int, newlmt int, reduced_lmt int, sex varchar(6), grade varchar(20), marital int, pay
+    > int, billamt int, newbillamt float, penality int, defaulter int)
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY ', '
+    > STORED AS ORC
+    > LOCATION '/user/hduser/projects/creditcard_insurance/insuranceorc'
+    > TBLPROPERTIES ("immutable"="true", "orc.compress"="SNAPPY");
+OK
+Time taken: 0.267 seconds
+
+hive> Insert into insuranceorc select * from insurancestg where issuerid is not null;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709143437_96da8b79-88c3-4ac1-bac5-c3b77f15d7c4
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0022, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0022/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0022
+Hadoop job information for Stage-1: number of mappers: 0; number of reducers: 0
+2022-07-09 14:35:24,426 Stage-1 map = 0%,  reduce = 0%
+Ended Job = job_1657271823979_0022
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/insuranceorc/.hive-staging_hive_2022-07-09_14-34-37_398_9017981043722056196-1/-ext-10000
+Loading data to table insure.insuranceorc
+MapReduce Jobs Launched: 
+Stage-Stage-1:  HDFS Read: 0 HDFS Write: 0 SUCCESS
+Total MapReduce CPU Time Spent: 0 msec
+OK
+Time taken: 51.468 seconds
+
+hive> Insert into insuranceorc select * from insurancestg where issuerid is not null;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709145310_7907032d-87a1-4779-bdee-eeccb10148a8
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0028, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0028/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0028
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-09 14:53:51,544 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 14:54:06,519 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 10.83 sec
+MapReduce Total cumulative CPU time: 10 seconds 830 msec
+Ended Job = job_1657271823979_0028
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/insuranceorc/.hive-staging_hive_2022-07-09_14-53-10_154_3490019164892019181-1/-ext-10000
+Loading data to table insure.insuranceorc
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 10.83 sec   HDFS Read: 3064243 HDFS Write: 27776 SUCCESS
+Total MapReduce CPU Time Spent: 10 seconds 830 msec
+OK
+Time taken: 58.449 seconds
+
+hive> Insert into insuranceorc select * from insurancestg where issuerid is not null;
+FAILED: SemanticException [Error 10256]: Inserting into a non-empty immutable table is not allowed insuranceorc
+
+hive> alter table insuranceorc SET TBLPROPERTIES('EXTERNAL'='TRUE');
+OK
+Time taken: 0.212 seconds
+
+hive> with 
+    >     T1 as ( select max(penality) as penalitymale from insuranceorc where sex='male'), 
+    >     T2 as ( select max(penality) as penalityfemale from insuranceorc where sex='female')
+    > select penalitymale, penalityfemale from T1 inner join T2
+    > ON 1=1;
+FAILED: SemanticException Cartesian products are disabled for safety reasons. If you know what you are doing, please sethive.strict.checks.cartesian.product to false and that hive.mapred.mode is not set to 'strict' to proceed. Note that if you may get errors or incorrect results if you make a mistake while using some of the unsafe features.
+hive> set hive.strict.checks.cartesian.product=false;
+hive> with 
+    >     T1 as ( select max(penality) as penalitymale from insuranceorc where sex='male'), 
+    >     T2 as ( select max(penality) as penalityfemale from insuranceorc where sex='female')
+    > select penalitymale, penalityfemale from T1 inner join T2
+    > ON 1=1;
+Warning: Map Join MAPJOIN[25][bigTable=?] in task 'Stage-4:MAPRED' is a cross product
+Warning: Map Join MAPJOIN[26][bigTable=?] in task 'Stage-5:MAPRED' is a cross product
+Warning: Shuffle Join JOIN[16][tables = [$hdt$_0, $hdt$_1]] in Stage 'Stage-2:MAPRED' is a cross product
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709145755_8a1a93bd-5e9e-4024-95a6-2745459b6cc9
+Total jobs = 5
+Launching Job 1 out of 5
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0029, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0029/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0029
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-09 14:58:35,817 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 14:58:50,078 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 8.7 sec
+2022-07-09 14:59:02,206 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 14.01 sec
+MapReduce Total cumulative CPU time: 14 seconds 10 msec
+Ended Job = job_1657271823979_0029
+Launching Job 2 out of 5
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0030, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0030/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0030
+Hadoop job information for Stage-3: number of mappers: 1; number of reducers: 1
+2022-07-09 14:59:43,224 Stage-3 map = 0%,  reduce = 0%
+2022-07-09 14:59:57,073 Stage-3 map = 100%,  reduce = 0%, Cumulative CPU 8.83 sec
+2022-07-09 15:00:09,003 Stage-3 map = 100%,  reduce = 100%, Cumulative CPU 14.31 sec
+MapReduce Total cumulative CPU time: 14 seconds 310 msec
+Ended Job = job_1657271823979_0030
+Stage-7 is selected by condition resolver.
+Stage-8 is filtered out by condition resolver.
+Stage-2 is filtered out by condition resolver.
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/local/hive/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+2022-07-09 15:00:29	Starting to launch local task to process map join;	maximum memory = 477626368
+2022-07-09 15:00:32	Dump the side-table for tag: 1 with group count: 1 into file: file:/tmp/hduser/ceefa210-2ee5-416c-ba3f-de881af16e43/hive_2022-07-09_14-57-55_569_1507857202222233526-1/-local-10006/HashTable-Stage-4/MapJoin-mapfile41--.hashtable
+2022-07-09 15:00:32	Uploaded 1 File to: file:/tmp/hduser/ceefa210-2ee5-416c-ba3f-de881af16e43/hive_2022-07-09_14-57-55_569_1507857202222233526-1/-local-10006/HashTable-Stage-4/MapJoin-mapfile41--.hashtable (280 bytes)
+2022-07-09 15:00:32	End of local task; Time Taken: 2.415 sec.
+Execution completed successfully
+MapredLocal task succeeded
+Launching Job 4 out of 5
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0031, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0031/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0031
+Hadoop job information for Stage-4: number of mappers: 1; number of reducers: 0
+2022-07-09 15:01:13,171 Stage-4 map = 0%,  reduce = 0%
+2022-07-09 15:01:25,952 Stage-4 map = 100%,  reduce = 0%, Cumulative CPU 4.82 sec
+MapReduce Total cumulative CPU time: 4 seconds 820 msec
+Ended Job = job_1657271823979_0031
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 14.01 sec   HDFS Read: 31215 HDFS Write: 116 SUCCESS
+Stage-Stage-3: Map: 1  Reduce: 1   Cumulative CPU: 14.31 sec   HDFS Read: 31224 HDFS Write: 116 SUCCESS
+Stage-Stage-4: Map: 1   Cumulative CPU: 4.82 sec   HDFS Read: 4317 HDFS Write: 109 SUCCESS
+Total MapReduce CPU Time Spent: 33 seconds 140 msec
+OK
+8718	5779
+Time taken: 211.52 seconds, Fetched: 1 row(s)
+
+```
+
