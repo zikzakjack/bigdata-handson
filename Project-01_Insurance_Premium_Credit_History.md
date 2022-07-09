@@ -1963,3 +1963,145 @@ OK
 Time taken: 63.179 seconds
 
 ```
+
+## Data Provisioning to the Consumers into legacy Databases using Sqoop including Validation
+
+**Data export using Sqoop into DB**
+
+``` 
+mysql -u root -p
+
+password: root
+
+use customersdb;
+
+drop table if exists middlegrade;
+
+create table middlegrade (issuerid integer,businessyear integer,maskedstatedesc
+varchar(200),maskedsourcename varchar(100), defaulter varchar(20),maskednetworkurl varchar(200));
+
+quit;
+```
+
+1. Export the masked data into mysql using sqoop export as per the above table structure.
+2. Validate the export is properly happened using --validate option in sqoop
+
+sqoop export 
+--connect jdbc:mysql://127.0.0.1/custdb -username root -password root -table
+middlegrade -export-dir /user/hduser/defaulterinfo/ --fields-terminated-by '|' -validate
+
+
+sqoop export \
+    --driver com.mysql.cj.jdbc.Driver \
+    --connect jdbc:mysql://localhost/customersdb \
+    --username root \
+    --password Root123$ \
+    --export-dir '/user/hduser/projects/creditcard_insurance/defaulterinfo/' \
+    --fields-terminated-by '|' \
+    --table middlegrade \
+    --validate;
+
+
+``` 
+[hduser@localhost creditcard_insurance]$ sqoop export \
+>     --driver com.mysql.cj.jdbc.Driver \
+>     --connect jdbc:mysql://localhost/customersdb \
+>     --username root \
+>     --password Root123$ \
+>     --export-dir '/user/hduser/projects/creditcard_insurance/defaulterinfo/' \
+>     --fields-terminated-by '|' \
+>     --table middlegrade \
+>     --validate;
+Warning: /usr/local/hbase does not exist! HBase imports will fail.
+Please set $HBASE_HOME to the root of your HBase installation.
+Warning: /usr/local/sqoop/../hcatalog does not exist! HCatalog jobs will fail.
+Please set $HCAT_HOME to the root of your HCatalog installation.
+Warning: /usr/local/sqoop/../accumulo does not exist! Accumulo imports will fail.
+Please set $ACCUMULO_HOME to the root of your Accumulo installation.
+Warning: /usr/local/sqoop/../zookeeper does not exist! Accumulo imports will fail.
+Please set $ZOOKEEPER_HOME to the root of your Zookeeper installation.
+22/07/09 15:21:04 INFO sqoop.Sqoop: Running Sqoop version: 1.4.6
+22/07/09 15:21:04 WARN tool.BaseSqoopTool: Setting your password on the command-line is insecure. Consider using -P instead.
+22/07/09 15:21:04 WARN sqoop.ConnFactory: Parameter --driver is set to an explicit driver however appropriate connection manager is not being set (via --connection-manager). Sqoop is going to fall back to org.apache.sqoop.manager.GenericJdbcManager. Please specify explicitly which connection manager should be used next time.
+22/07/09 15:21:05 INFO manager.SqlManager: Using default fetchSize of 1000
+22/07/09 15:21:05 INFO tool.CodeGenTool: Beginning code generation
+22/07/09 15:21:06 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM middlegrade AS t WHERE 1=0
+22/07/09 15:21:06 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM middlegrade AS t WHERE 1=0
+22/07/09 15:21:06 INFO orm.CompilationManager: HADOOP_MAPRED_HOME is /usr/local/hadoop
+Note: /tmp/sqoop-hduser/compile/ba430b3fa329846e6bee592ba8bc77d8/middlegrade.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+22/07/09 15:21:10 INFO orm.CompilationManager: Writing jar file: /tmp/sqoop-hduser/compile/ba430b3fa329846e6bee592ba8bc77d8/middlegrade.jar
+22/07/09 15:21:10 INFO mapreduce.ExportJobBase: Beginning export of middlegrade
+22/07/09 15:21:10 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/09 15:21:10 INFO Configuration.deprecation: mapred.jar is deprecated. Instead, use mapreduce.job.jar
+22/07/09 15:21:12 INFO manager.SqlManager: Executing SQL statement: SELECT t.* FROM middlegrade AS t WHERE 1=0
+22/07/09 15:21:12 INFO Configuration.deprecation: mapred.reduce.tasks.speculative.execution is deprecated. Instead, use mapreduce.reduce.speculative
+22/07/09 15:21:12 INFO Configuration.deprecation: mapred.map.tasks.speculative.execution is deprecated. Instead, use mapreduce.map.speculative
+22/07/09 15:21:12 INFO Configuration.deprecation: mapred.map.tasks is deprecated. Instead, use mapreduce.job.maps
+22/07/09 15:21:12 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/09 15:21:16 INFO input.FileInputFormat: Total input paths to process : 1
+22/07/09 15:21:16 INFO input.FileInputFormat: Total input paths to process : 1
+22/07/09 15:21:17 INFO mapreduce.JobSubmitter: number of splits:4
+22/07/09 15:21:17 INFO Configuration.deprecation: mapred.map.tasks.speculative.execution is deprecated. Instead, use mapreduce.map.speculative
+22/07/09 15:21:17 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1657271823979_0034
+22/07/09 15:21:18 INFO impl.YarnClientImpl: Submitted application application_1657271823979_0034
+22/07/09 15:21:18 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1657271823979_0034/
+22/07/09 15:21:18 INFO mapreduce.Job: Running job: job_1657271823979_0034
+22/07/09 15:21:31 INFO mapreduce.Job: Job job_1657271823979_0034 running in uber mode : false
+22/07/09 15:21:31 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/09 15:21:48 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/09 15:21:49 INFO mapreduce.Job: Job job_1657271823979_0034 completed successfully
+22/07/09 15:21:49 INFO mapreduce.Job: Counters: 30
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=534656
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=83024
+		HDFS: Number of bytes written=0
+		HDFS: Number of read operations=19
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=0
+	Job Counters 
+		Launched map tasks=4
+		Data-local map tasks=4
+		Total time spent by all maps in occupied slots (ms)=60090
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=60090
+		Total vcore-seconds taken by all map tasks=60090
+		Total megabyte-seconds taken by all map tasks=61532160
+	Map-Reduce Framework
+		Map input records=496
+		Map output records=496
+		Input split bytes=776
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=1685
+		CPU time spent (ms)=13680
+		Physical memory (bytes) snapshot=681136128
+		Virtual memory (bytes) snapshot=8486903808
+		Total committed heap usage (bytes)=557842432
+	File Input Format Counters 
+		Bytes Read=0
+	File Output Format Counters 
+		Bytes Written=0
+22/07/09 15:21:49 INFO mapreduce.ExportJobBase: Transferred 81.0781 KB in 37.3125 seconds (2.1729 KB/sec)
+22/07/09 15:21:49 INFO mapreduce.ExportJobBase: Exported 496 records.
+22/07/09 15:21:50 INFO mapreduce.JobBase: Validating the integrity of the import using the following configuration
+	Validator : org.apache.sqoop.validation.RowCountValidator
+	Threshold Specifier : org.apache.sqoop.validation.AbsoluteValidationThreshold
+	Failure Handler : org.apache.sqoop.validation.AbortOnFailureHandler
+
+22/07/09 15:21:50 INFO validation.RowCountValidator: Data successfully validated
+
+mysql> select count(*) from middlegrade;
++----------+
+| count(*) |
++----------+
+|      496 |
++----------+
+1 row in set (0.01 sec)
+
+```
