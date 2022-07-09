@@ -1264,3 +1264,255 @@ text: Unable to write to output stream.
 ,,,,,,,13,SHOP (Small Group),Yes
 
 ```
+
+## ETL & ELT using Hive
+
+**OPTION: 1**
+
+DROP TABLE IF EXISTS insurance;
+
+CREATE TABLE insurance (IssuerId1 int, IssuerId2 int, BusinessYear int, StateCode string, SourceName string,
+NetworkName string, NetworkURL string, RowNumber int, MarketCoverage string, DentalOnlyPlan string)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+TBLPROPERTIES ("skip.header.line.count"="1");
+
+SHOW TABLES;
+
+LOAD DATA INPATH '/user/hduser/projects/creditcard_insurance/insurance_clouddata' INTO TABLE insurance;
+
+SELECT COUNT(*) FROM insurance;
+
+``` 
+hive> DROP TABLE IF EXISTS insurance;
+OK
+Time taken: 0.062 seconds
+
+hive> CREATE TABLE insurance (IssuerId1 int, IssuerId2 int, BusinessYear int, StateCode string, SourceName string,
+    > NetworkName string, NetworkURL string, RowNumber int, MarketCoverage string, DentalOnlyPlan string)
+    > ROW FORMAT DELIMITED
+    > FIELDS TERMINATED BY ','
+    > TBLPROPERTIES ("skip.header.line.count"="1");
+OK
+Time taken: 0.555 seconds
+
+hive> SHOW TABLES;
+OK
+credits_all
+credits_all_temp
+credits_cst
+credits_pst
+insurance
+penalties
+Time taken: 0.074 seconds, Fetched: 6 row(s)
+
+hive> LOAD DATA INPATH '/user/hduser/projects/creditcard_insurance/insurance_clouddata' INTO TABLE insurance;
+Loading data to table insure.insurance
+OK
+Time taken: 1.337 seconds
+
+hive> SELECT COUNT(*) FROM insurance;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709125301_9f2af74d-2e4a-4f03-98c3-c08d63dad83d
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0017, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0017/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0017
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-09 12:53:49,154 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 12:54:04,041 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 5.73 sec
+2022-07-09 12:54:15,920 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 11.16 sec
+MapReduce Total cumulative CPU time: 11 seconds 160 msec
+Ended Job = job_1657271823979_0017
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 11.16 sec   HDFS Read: 423548 HDFS Write: 104 SUCCESS
+Total MapReduce CPU Time Spent: 11 seconds 160 msec
+OK
+3822
+Time taken: 76.918 seconds, Fetched: 1 row(s)
+
+```
+
+**OPTION 2:**
+
+USE insure;
+
+CREATE TABLE insurance_temp (IssuerId1 INT, IssuerId2 INT, BusinessYear INT, StateCode STRING, SourceName STRING,
+NetworkName STRING, NetworkURL STRING, RowNumber INT, MarketCoverage STRING, DentalOnlyPlan STRING)
+Partitioned by (datadt DATE, hr INT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+TBLPROPERTIES ("skip.header.line.count"="1");
+
+SELECT COUNT(*) FROM insurance_temp;
+
+-- reusing the data file under hive table as the data at the previous external location will not be available now  
+bash /home/hduser/projects/creditcard_insurance/hivepart.sh /user/hive/warehouse/insure.db/insurance insure.insurance_temp creditcard_insurance
+
+SELECT COUNT(*) FROM insurance_temp;
+
+-- Delete the invalid data with null issuerid1 and issuerid2 using insert select query
+INSERT OVERWRITE TABLE insurance_temp partition(datadt, hr) SELECT * FROM insurance_temp WHERE issuerid1 IS NOT NULL and issuerid2 IS NOT NULL;
+
+``` 
+hive> 
+    > CREATE TABLE insurance_temp (IssuerId1 INT, IssuerId2 INT, BusinessYear INT, StateCode STRING, SourceName STRING,
+    > NetworkName STRING, NetworkURL STRING, RowNumber INT, MarketCoverage STRING, DentalOnlyPlan STRING)
+    > Partitioned by (datadt DATE, hr INT)
+    > ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+    > TBLPROPERTIES ("skip.header.line.count"="1");
+OK
+Time taken: 0.236 seconds
+
+hive> SELECT COUNT(*) FROM insurance_temp;
+OK
+0
+Time taken: 0.418 seconds, Fetched: 1 row(s)
+
+[hduser@localhost creditcard_insurance]$ bash /home/hduser/projects/creditcard_insurance/hivepart.sh /user/hive/warehouse/insure.db/insurance insure.insurance_temp creditcard_insurance
+/home/hduser/projects/creditcard_insurance/hivepart.sh is starting
+/user/hive/warehouse/insure.db/insurance is the path
+insure.insurance_temp is the tablename
+creditcard_insurance is the filename prefix
+file with path name is /user/hive/warehouse/insure.db/insurance/creditcard_insurance_2022070912
+creditcard_insurance_2022070912
+2022-07-09
+12
+loading hive table
+which: no hbase in (/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/lib/jvm/java-1.8.0-openjdk:/usr/lib/jvm/java-1.8.0-openjdk/jre//bin:/usr/local/hadoop/bin:/usr/local/hadoop/sbin:/usr/local/sqoop/bin:/usr/local/hive/bin:/usr/local/hbase/bin:/usr/local/zookeeper/bin:/usr/local/phoenix/bin:/usr/local/kafka/bin:/usr/local/nifi/bin:/usr/local/spark/bin:/usr/local/spark/sbin:/tmp/inceptez/bin/:/usr/local/oozie/bin:/tmp/bin:/usr/local/oozie/bin:/usr/local/pycharm/bin/:/home/hduser/.local/bin:/home/hduser/bin:/usr/lib/jvm/java-1.8.0-openjdk:/usr/lib/jvm/java-1.8.0-openjdk/jre//bin:/usr/local/hadoop/bin:/usr/local/hadoop/sbin:/usr/local/sqoop/bin:/usr/local/hive/bin:/usr/local/hbase/bin:/usr/local/zookeeper/bin:/usr/local/phoenix/bin:/usr/local/kafka/bin:/usr/local/nifi/bin:/usr/local/spark/bin:/usr/local/spark/sbin:/tmp/inceptez/bin/:/usr/local/oozie/bin:/tmp/bin:/usr/local/oozie/bin:/usr/local/pycharm/bin/)
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/local/hive/lib/log4j-slf4j-impl-2.6.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/local/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.10.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+
+Logging initialized using configuration in jar:file:/usr/local/hive/lib/hive-common-2.3.9.jar!/hive-log4j2.properties Async: true
+Loading data to table insure.insurance_temp partition (datadt=2022-07-09, hr=12)
+OK
+Time taken: 8.897 seconds
+
+hive> SELECT COUNT(*) FROM insurance_temp;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709132125_c8e2512e-c718-40c8-ac69-ef39e162d990
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0018, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0018/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0018
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2022-07-09 13:22:05,323 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 13:22:19,960 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 6.04 sec
+2022-07-09 13:22:33,101 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 12.5 sec
+MapReduce Total cumulative CPU time: 12 seconds 500 msec
+Ended Job = job_1657271823979_0018
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1  Reduce: 1   Cumulative CPU: 12.5 sec   HDFS Read: 424232 HDFS Write: 104 SUCCESS
+Total MapReduce CPU Time Spent: 12 seconds 500 msec
+OK
+3822
+Time taken: 69.789 seconds, Fetched: 1 row(s)
+
+hive> INSERT OVERWRITE TABLE insurance_temp partition(datadt, hr) SELECT * FROM insurance_temp WHERE issuerid1 IS NOT NULL and issuerid2 IS NOT NULL;
+FAILED: SemanticException [Error 10096]: Dynamic partition strict mode requires at least one static partition column. To turn this off set hive.exec.dynamic.partition.mode=nonstrict
+
+hive> set hive.exec.dynamic.partition.mode=nonstrict;
+
+hive> INSERT OVERWRITE TABLE insurance_temp partition(datadt, hr) SELECT * FROM insurance_temp WHERE issuerid1 IS NOT NULL and issuerid2 IS NOT NULL;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709133002_7fe99b1f-24d9-445e-b4fd-ae11f12cbe16
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0019, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0019/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0019
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-09 13:30:44,258 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 13:30:59,440 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 9.65 sec
+MapReduce Total cumulative CPU time: 9 seconds 650 msec
+Ended Job = job_1657271823979_0019
+Stage-4 is selected by condition resolver.
+Stage-3 is filtered out by condition resolver.
+Stage-5 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hive/warehouse/insure.db/insurance_temp/.hive-staging_hive_2022-07-09_13-30-02_294_1874925130189078363-1/-ext-10000
+Loading data to table insure.insurance_temp partition (datadt=null, hr=null)
+
+Loaded : 1/1 partitions.
+	 Time taken to load dynamic partitions: 0.491 seconds
+	 Time taken for adding to write entity : 0.001 seconds
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 9.65 sec   HDFS Read: 421088 HDFS Write: 395620 SUCCESS
+Total MapReduce CPU Time Spent: 9 seconds 650 msec
+OK
+Time taken: 59.746 seconds
+
+hive> SELECT COUNT(*) FROM insurance_temp;
+OK
+3363
+Time taken: 0.325 seconds, Fetched: 1 row(s)
+
+```
+
+**Create one more fixed width hive table to load the fixed width states_fixedwidth data using Regex Serde**
+
+DROP TABLE IF EXISTS insure.state_master;
+
+CREATE EXTERNAL TABLE insure.state_master (statecd STRING, statedesc STRING)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.contrib.serde2.RegexSerDe'
+WITH SERDEPROPERTIES ("input.regex" = "(.{2})(.{20})" )
+LOCATION '/user/hduser/projects/creditcard_insurance/states';
+
+LOAD DATA LOCAL INPATH '/home/hduser/projects/creditcard_insurance/states_fixedwidth' OVERWRITE INTO TABLE INSURE.state_master;
+
+hadoop fs -ls /user/hduser/projects/creditcard_insurance/states/
+
+hadoop fs -text /user/hduser/projects/creditcard_insurance/states/* | head
+
+
+``` 
+hive> DROP TABLE IF EXISTS insure.state_master;
+OK
+Time taken: 0.035 seconds
+
+hive> 
+    > CREATE EXTERNAL TABLE insure.state_master (statecd STRING, statedesc STRING)
+    > ROW FORMAT SERDE 'org.apache.hadoop.hive.contrib.serde2.RegexSerDe'
+    > WITH SERDEPROPERTIES ("input.regex" = "(.{2})(.{20})" )
+    > LOCATION '/user/hduser/projects/creditcard_insurance/states';
+OK
+Time taken: 0.192 seconds
+
+hive> LOAD DATA LOCAL INPATH '/home/hduser/projects/creditcard_insurance/states_fixedwidth' OVERWRITE INTO TABLE INSURE.state_master;
+Loading data to table insure.state_master
+OK
+Time taken: 1.424 seconds
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/states/
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop       1173 2022-07-09 13:39 /user/hduser/projects/creditcard_insurance/states/states_fixedwidth
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -text /user/hduser/projects/creditcard_insurance/states/* | head
+ALAlabama             
+AKAlaska              
+AZArizona             
+ARArkansas            
+CACalifornia          
+COColorado            
+CTConnecticut         
+DEDelaware            
+DCDistrict of Columbia
+FLFlorida             
+
+
+```
