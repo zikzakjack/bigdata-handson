@@ -965,3 +965,302 @@ Found 1 items
 -rwxr-xr-x   1 hduser hadoop     115870 2022-07-08 23:02 /user/hduser/projects/creditcard_insurance/penalties/000000_0
 
 ```
+## Data Provisioning using Hive, Sqoop and DistCp
+
+Export and overwrite the above data into /user/hduser/projects/creditcard_insurance/defaultersout/ 
+we will be using this defaultersout data in a later point of time and /user/hduser/projects/creditcard_insurance/nondefaultersout/
+locations with defaulter=1 and defaulter=0 respectively using ‘,’ delimiter. We will be
+sending this nondefaultersout data to external systems using Distcp/SFTP.
+
+INSERT OVERWRITE DIRECTORY '/user/hduser/projects/creditcard_insurance/defaultersout/'
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY ', '
+SELECT * FROM penalties
+WHERE defaulter=1;
+
+hadoop fs -ls /user/hduser/projects/creditcard_insurance/defaultersout/
+
+hadoop fs -text /user/hduser/projects/creditcard_insurance/defaultersout/* | head
+
+INSERT OVERWRITE DIRECTORY '/user/hduser/projects/creditcard_insurance/nondefaultersout/'
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY ', '
+SELECT CONCAT(id, ', ', issuerid1, ', ', issuerid2, ', ', lmt, ', ', newlmt, ', ', sex, ', ', edu, ', ', marital, ',', pay, ', ', billamt, ', ', newbillamt, ', ', defaulter ) AS cnt from penalties WHERE defaulter=0
+UNION
+SELECT CONCAT('Trl|', count(1)) AS cnt FROM (SELECT * FROM penalties WHERE defaulter=0)  tmp;
+
+hadoop fs -ls /user/hduser/projects/creditcard_insurance/nondefaultersout/
+
+hadoop fs -text /user/hduser/projects/creditcard_insurance/nondefaultersout/* | head
+
+hadoop fs -text /user/hduser/projects/creditcard_insurance/nondefaultersout/* | tail
+
+``` 
+hive> INSERT OVERWRITE DIRECTORY '/user/hduser/projects/creditcard_insurance/defaultersout/'
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY ', '
+    > SELECT * FROM penalties
+    > WHERE defaulter=1;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709122747_4f93115d-08ab-4435-b231-a450aaf31ab7
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0013, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0013/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0013
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-09 12:28:33,947 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 12:28:48,775 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 9.56 sec
+MapReduce Total cumulative CPU time: 9 seconds 560 msec
+Ended Job = job_1657271823979_0013
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/defaultersout/.hive-staging_hive_2022-07-09_12-27-47_432_173590083897411425-1/-ext-10000
+Moving data to directory /user/hduser/projects/creditcard_insurance/defaultersout
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 9.56 sec   HDFS Read: 137218 HDFS Write: 113870 SUCCESS
+Total MapReduce CPU Time Spent: 9 seconds 560 msec
+OK
+Time taken: 64.698 seconds
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/defaultersout/
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop     113870 2022-07-09 12:28 /user/hduser/projects/creditcard_insurance/defaultersout/000000_0
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -text /user/hduser/projects/creditcard_insurance/defaultersout/* | head
+1,21989,21989,20000,19200,2,2,1,2,3913.0,3991.26,1
+2,38344,38344,120000,115200,2,2,2,-1,2682.0,2735.64,1
+14,44580,44580,70000,67200,1,2,2,1,65802.0,67118.04,1
+17,46944,46944,20000,19200,1,1,2,0,15376.0,15683.52,1
+22,17100,17100,120000,115200,2,2,1,-1,316.0,322.32,1
+23,17100,17100,70000,67200,2,2,2,2,41087.0,41908.74,1
+24,17100,17100,450000,432000,2,1,1,-2,5512.0,5622.24,1
+32,33851,33851,50000,48000,1,2,2,2,30518.0,31128.36,1
+47,84251,84251,20000,19200,2,1,2,0,14028.0,14308.56,1
+48,86830,86830,150000,144000,2,5,2,0,4463.0,4552.26,1
+text: Unable to write to output stream.
+
+hive> INSERT OVERWRITE DIRECTORY '/user/hduser/projects/creditcard_insurance/nondefaultersout/'
+    > ROW FORMAT DELIMITED 
+    > FIELDS TERMINATED BY ', '
+    > SELECT CONCAT(id, ', ', issuerid1, ', ', issuerid2, ', ', lmt, ', ', newlmt, ', ', sex, ', ', edu, ', ', marital, ',', pay, ', ', billamt, ', ', newbillamt, ', ', defaulter ) AS cnt from penalties WHERE defaulter=0
+    > UNION
+    > SELECT CONCAT('Trl|', count(1)) AS cnt FROM (SELECT * FROM penalties WHERE defaulter=0)  tmp;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709123039_8e9bdb38-1b33-4730-9509-be550865a702
+Total jobs = 2
+Launching Job 1 out of 2
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0014, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0014/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0014
+Hadoop job information for Stage-3: number of mappers: 1; number of reducers: 1
+2022-07-09 12:31:24,668 Stage-3 map = 0%,  reduce = 0%
+2022-07-09 12:31:43,525 Stage-3 map = 100%,  reduce = 0%, Cumulative CPU 13.46 sec
+2022-07-09 12:31:56,547 Stage-3 map = 100%,  reduce = 100%, Cumulative CPU 22.11 sec
+MapReduce Total cumulative CPU time: 22 seconds 110 msec
+Ended Job = job_1657271823979_0014
+Launching Job 2 out of 2
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapreduce.job.reduces=<number>
+Starting Job = job_1657271823979_0015, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0015/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0015
+Hadoop job information for Stage-2: number of mappers: 2; number of reducers: 1
+2022-07-09 12:32:38,495 Stage-2 map = 0%,  reduce = 0%
+2022-07-09 12:33:01,903 Stage-2 map = 50%,  reduce = 0%, Cumulative CPU 12.31 sec
+2022-07-09 12:33:02,966 Stage-2 map = 100%,  reduce = 0%, Cumulative CPU 29.73 sec
+2022-07-09 12:33:14,818 Stage-2 map = 100%,  reduce = 100%, Cumulative CPU 37.29 sec
+MapReduce Total cumulative CPU time: 37 seconds 290 msec
+Ended Job = job_1657271823979_0015
+Moving data to directory /user/hduser/projects/creditcard_insurance/nondefaultersout
+MapReduce Jobs Launched: 
+Stage-Stage-3: Map: 1  Reduce: 1   Cumulative CPU: 22.11 sec   HDFS Read: 27570 HDFS Write: 122 SUCCESS
+Stage-Stage-2: Map: 2  Reduce: 1   Cumulative CPU: 37.29 sec   HDFS Read: 148377 HDFS Write: 466582 SUCCESS
+Total MapReduce CPU Time Spent: 59 seconds 400 msec
+OK
+Time taken: 156.069 seconds
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/nondefaultersout/
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop     466582 2022-07-09 12:33 /user/hduser/projects/creditcard_insurance/nondefaultersout/000000_0
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -text /user/hduser/projects/creditcard_insurance/nondefaultersout/* | head
+1000, 38897, 38897, 120000, 120000, 1, 2, 2,2, 113348.0, 113348.0, 0
+10000, 99389, 99389, 230000, 230000, 1, 2, 1,0, 19505.0, 19505.0, 0
+1001, 43274, 43274, 100000, 100000, 1, 2, 1,0, 94453.0, 94453.0, 0
+1002, 43274, 43274, 200000, 200000, 2, 2, 1,0, 81865.0, 81865.0, 0
+1003, 48121, 48121, 90000, 90000, 2, 2, 1,-1, 4989.0, 4989.0, 0
+1006, 48129, 48129, 140000, 140000, 1, 1, 2,-1, 2937.0, 2937.0, 0
+1007, 49193, 49193, 200000, 200000, 2, 2, 2,-1, 1371.0, 1371.0, 0
+1008, 51398, 51398, 170000, 170000, 2, 2, 1,0, 166246.0, 166246.0, 0
+1009, 51398, 51398, 30000, 30000, 1, 2, 2,0, 19785.0, 19785.0, 0
+101, 57451, 57451, 140000, 140000, 1, 1, 2,-2, 672.0, 672.0, 0
+text: Unable to write to output stream.
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -text /user/hduser/projects/creditcard_insurance/nondefaultersout/* | tail
+9984, 56707, 56707, 130000, 130000, 2, 3, 1,0, 101885.0, 101885.0, 0
+9986, 60013, 60013, 480000, 480000, 2, 1, 2,-1, 12759.0, 12759.0, 0
+9987, 63474, 63474, 160000, 160000, 2, 1, 1,-1, 9293.0, 9293.0, 0
+9988, 63474, 63474, 10000, 10000, 1, 1, 2,0, 6599.0, 6599.0, 0
+9989, 63474, 63474, 360000, 360000, 2, 2, 2,-1, 8552.0, 8552.0, 0
+9990, 63474, 63474, 260000, 260000, 2, 2, 1,0, 251811.0, 251811.0, 0
+9991, 68420, 68420, 330000, 330000, 2, 2, 1,0, 47644.0, 47644.0, 0
+9997, 95417, 95417, 80000, 80000, 2, 2, 2,-2, 3946.0, 3946.0, 0
+9998, 99389, 99389, 200000, 200000, 1, 3, 1,0, 138877.0, 138877.0, 0
+Trl|7065
+
+```
+
+### Data Provisioning to the Consumers using DistCP
+Copy the data non defaulters data from one cluster (Prod) to another cluster (Non Prod) for analytics purpose.
+
+hadoop distcp -overwrite hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/nondefaultersout/ hdfs://localhost:54310/tmp/promocustomers
+
+hadoop fs -ls hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/nondefaultersout/
+
+hadoop fs -ls hdfs://localhost:54310/tmp/promocustomers/
+
+``` 
+
+[hduser@localhost creditcard_insurance]$ hadoop distcp -overwrite hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/nondefaultersout/ hdfs://localhost:54310/tmp/promocustomers
+22/07/09 12:37:36 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+22/07/09 12:37:38 INFO tools.DistCp: Input Options: DistCpOptions{atomicCommit=false, syncFolder=false, deleteMissing=false, ignoreFailures=false, maxMaps=20, sslConfigurationFile='null', copyStrategy='uniformsize', sourceFileListing=null, sourcePaths=[hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/nondefaultersout], targetPath=hdfs://localhost:54310/tmp/promocustomers, targetPathExists=false, preserveRawXattrs=false}
+22/07/09 12:37:38 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/09 12:37:39 INFO Configuration.deprecation: io.sort.mb is deprecated. Instead, use mapreduce.task.io.sort.mb
+22/07/09 12:37:39 INFO Configuration.deprecation: io.sort.factor is deprecated. Instead, use mapreduce.task.io.sort.factor
+22/07/09 12:37:39 INFO client.RMProxy: Connecting to ResourceManager at /0.0.0.0:8032
+22/07/09 12:37:40 INFO mapreduce.JobSubmitter: number of splits:1
+22/07/09 12:37:40 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1657271823979_0016
+22/07/09 12:37:40 INFO impl.YarnClientImpl: Submitted application application_1657271823979_0016
+22/07/09 12:37:41 INFO mapreduce.Job: The url to track the job: http://Inceptez:8088/proxy/application_1657271823979_0016/
+22/07/09 12:37:41 INFO tools.DistCp: DistCp job-id: job_1657271823979_0016
+22/07/09 12:37:41 INFO mapreduce.Job: Running job: job_1657271823979_0016
+22/07/09 12:37:51 INFO mapreduce.Job: Job job_1657271823979_0016 running in uber mode : false
+22/07/09 12:37:51 INFO mapreduce.Job:  map 0% reduce 0%
+22/07/09 12:38:00 INFO mapreduce.Job:  map 100% reduce 0%
+22/07/09 12:38:01 INFO mapreduce.Job: Job job_1657271823979_0016 completed successfully
+22/07/09 12:38:02 INFO mapreduce.Job: Counters: 33
+	File System Counters
+		FILE: Number of bytes read=0
+		FILE: Number of bytes written=118461
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=467001
+		HDFS: Number of bytes written=466582
+		HDFS: Number of read operations=18
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=4
+	Job Counters 
+		Launched map tasks=1
+		Other local map tasks=1
+		Total time spent by all maps in occupied slots (ms)=6467
+		Total time spent by all reduces in occupied slots (ms)=0
+		Total time spent by all map tasks (ms)=6467
+		Total vcore-seconds taken by all map tasks=6467
+		Total megabyte-seconds taken by all map tasks=6622208
+	Map-Reduce Framework
+		Map input records=1
+		Map output records=0
+		Input split bytes=135
+		Spilled Records=0
+		Failed Shuffles=0
+		Merged Map outputs=0
+		GC time elapsed (ms)=127
+		CPU time spent (ms)=1920
+		Physical memory (bytes) snapshot=167469056
+		Virtual memory (bytes) snapshot=2116947968
+		Total committed heap usage (bytes)=144179200
+	File Input Format Counters 
+		Bytes Read=284
+	File Output Format Counters 
+		Bytes Written=0
+	org.apache.hadoop.tools.mapred.CopyMapper$Counter
+		BYTESCOPIED=466582
+		BYTESEXPECTED=466582
+		COPY=1
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/nondefaultersout/
+Found 1 items
+-rwxr-xr-x   1 hduser hadoop     466582 2022-07-09 12:33 hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/nondefaultersout/000000_0
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls hdfs://localhost:54310/tmp/promocustomers/
+Found 1 items
+-rw-r--r--   1 hduser supergroup     466582 2022-07-09 12:37 hdfs://localhost:54310/tmp/promocustomers/000000_0
+
+```
+
+
+### Data Ingestion from external systems using Linux Shell Script
+
+Execute the below shell script to pull the data from Cloud S3, validate, remove trailer data, 
+move to HDFS and archive the data for backup.
+Ensure data is imported from cloud to hdfs and get the date and take a note of the timestamp in the file.
+
+bash sfm_insuredata.sh https://s3.us-east-2.amazonaws.com/com.inceptez/datafolder/insuranceinfo.csv
+
+hadoop fs -ls /user/hduser/projects/creditcard_insurance/insurance_clouddata
+
+``` 
+
+[hduser@localhost creditcard_insurance]$ bash sfm_insuredata.sh https://s3.us-east-2.amazonaws.com/com.inceptez/datafolder/insuranceinfo.csv
+src dir is present
+archival path exists
+--2022-07-09 12:14:33--  https://s3.us-east-2.amazonaws.com/com.inceptez/datafolder/insuranceinfo.csv
+Resolving s3.us-east-2.amazonaws.com (s3.us-east-2.amazonaws.com)... 52.219.98.177
+Connecting to s3.us-east-2.amazonaws.com (s3.us-east-2.amazonaws.com)|52.219.98.177|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 414551 (405K) [text/csv]
+Saving to: ‘/tmp/clouddata/creditcard_insurance’
+
+100%[===================================================================================================================================>] 414,551      336KB/s   in 1.2s   
+
+2022-07-09 12:14:35 (336 KB/s) - ‘/tmp/clouddata/creditcard_insurance’ saved [414551/414551]
+
+trailer count is 3823
+file count is 3823
+Remove the trailer line in the file
+Data copied to HDFS successfully
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -ls /user/hduser/projects/creditcard_insurance/insurance_clouddata
+Found 2 items
+-rw-r--r--   1 hduser hadoop          0 2022-07-09 12:14 /user/hduser/projects/creditcard_insurance/insurance_clouddata/_SUCCESS
+-rw-r--r--   1 hduser hadoop     414543 2022-07-09 12:14 /user/hduser/projects/creditcard_insurance/insurance_clouddata/creditcard_insurance_2022070912
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -text /user/hduser/projects/creditcard_insurance/insurance_clouddata/creditcard_insurance_2022070912 | head
+IssuerId,IssuerId2,BusinessYear,StateCode,SourceName,NetworkName,NetworkURL,RowNumber,MarketCoverage,DentalOnlyPlan
+21989,21989,2018,AK,HIOS,ODS Premier,https://www.modahealth.com/ProviderSearch/faces/webpages/home.xhtml?dn=ods,13,,
+38344,38344,2018,AK,HIOS,HeritagePlus,https://www.premera.com/wa/visitor/,13,,
+38536,38536,2018,AK,HIOS,Lincoln Dental Connect,http://lfg.go2dental.com/member/dental_search/searchprov.cgi?P=LFGDentalConnect&Network=L,13,,
+42507,42507,2018,AK,HIOS,DentalGuard Preferred,https://www.guardiananytime.com/fpapp/FPWeb/dentalSearch.process,13,,
+73836,73836,2018,AK,HIOS,Moda Plus AK Regional,https://www.modahealth.com/ProviderSearch/faces/webpages/home.xhtml?dn=ods,13,,
+73836,73836,2018,AK,HIOS,Moda Plus Providence,https://www.modahealth.com/ProviderSearch/faces/webpages/home.xhtml?dn=ods,14,,
+74819,74819,2018,AK,HIOS,DenteMax,http://www2.dentemax.com/,13,,
+84859,84859,2018,AK,HIOS,Ameritas PPO Dental Network,www.standard.com,13,,
+12538,12538,2018,AL,HIOS,DenteMax,http://www2.dentemax.com/,13,,
+text: Unable to write to output stream.
+
+[hduser@localhost creditcard_insurance]$ hadoop fs -text /user/hduser/projects/creditcard_insurance/insurance_clouddata/creditcard_insurance_2022070912 | tail
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,Individual,Yes
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,Individual,Yes
+,,,,,,,13,SHOP (Small Group),Yes
+,,,,,,,13,SHOP (Small Group),Yes
+
+```
