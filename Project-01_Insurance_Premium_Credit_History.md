@@ -1834,3 +1834,132 @@ Time taken: 211.52 seconds, Fetched: 1 row(s)
 
 ```
 
+## Data Governance - Redaction and Masking using Hive and Python
+
+**create view in hive to restrict few columns, store queries, and apply some masking on sensitive
+columns using either query or by using the mask_insure.py function given in the project document.**
+
+**OPTION 1 :**
+
+create view middlegradeview as
+select issuerid,businessyear,statedesc,sourcename, sex,grade,marital,newbillamt,defaulter
+,translate(translate(translate(translate(translate(networkurl,'a','x'),'b','y'),'c','z'),'s','r'),'.com','.aaa') as
+maskednetworkurl
+from insuranceorc
+where grade='middle grade'
+and issuerid is not null;
+
+
+SELECT * FROM middlegradeview LIMIT 10;
+
+``` 
+hive> 
+    > create view middlegradeview as
+    > select issuerid,businessyear,statedesc,sourcename, sex,grade,marital,newbillamt,defaulter
+    > ,translate(translate(translate(translate(translate(networkurl,'a','x'),'b','y'),'c','z'),'s','r'),'.com','.aaa') as
+    > maskednetworkurl
+    > from insuranceorc
+    > where grade='middle grade'
+    > and issuerid is not null;
+OK
+Time taken: 0.412 seconds
+
+hive> 
+    > SELECT * FROM middlegradeview LIMIT 10;
+OK
+1710017100	2018	Arizona             	HIOS	male	middle grade	1	12075.78	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	female	middle grade	1	22799.04	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	male	middle grade	1	12075.78	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	female	middle grade	1	22799.04	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	male	middle grade	1	12075.78	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	female	middle grade	1	22799.04	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	male	middle grade	1	12075.78	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1710017100	2018	Arizona             	HIOS	female	middle grade	1	22799.04	1	httpr://aetlazxtar.aetlife.zaa/aetlazxtar/exezute/Sexrzh?rexrzhType=findDentirtHCR_AZ&plxnType=DPPO&netwarkID=2
+1684216842	2018	Florida             	HIOS	male	middle grade	1	79983.3	1	http://apd.yzyrfl.zaa
+1684216842	2018	Florida             	HIOS	male	middle grade	1	79983.3	1	http://apd.yzyrfl.zaa
+Time taken: 0.436 seconds, Fetched: 10 row(s)
+
+```
+
+**OPTION 2:**
+
+create view middlegradeview1 as
+select transform(issuerid,businessyear,statedesc,sourcename, defaulter ,networkurl) using 'python /home/hduser/projects/creditcard_insurance/mask_insure.py'
+as (issuerid,businessyear,statedesc,sourcename, defaulter ,maskednetworkurl)
+from insuranceorc
+where grade='middle grade'
+and issuerid is not null;
+
+SELECT * FROM middlegradeview1 LIMIT 10;
+
+``` 
+hive> 
+    > create view middlegradeview1 as
+    > select transform(issuerid,businessyear,statedesc,sourcename, defaulter ,networkurl) using 'python /home/hduser/projects/creditcard_insurance/mask_insure.py'
+    > as (issuerid,businessyear,statedesc,sourcename, defaulter ,maskednetworkurl)
+    > from insuranceorc
+    > where grade='middle grade'
+    > and issuerid is not null;
+OK
+Time taken: 0.257 seconds
+
+hive> SELECT * FROM middlegradeview1 LIMIT 10;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709150709_cc4e2bf2-43a9-4e18-9e6a-e7be03d20a42
+Total jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0032, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0032/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0032
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-09 15:07:55,135 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 15:08:10,373 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 10.43 sec
+MapReduce Total cumulative CPU time: 10 seconds 430 msec
+Ended Job = job_1657271823979_0032
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 10.43 sec   HDFS Read: 32031 HDFS Write: 2337 SUCCESS
+Total MapReduce CPU Time Spent: 10 seconds 430 msec
+OK
+1710017100	2018	b8639464dd1fba2a366eed9409062ebeaaa48fe3b2630e3ab0f28230ae6426b0	db9a89f9b51c5542e501a5acadc9933f	1	https:--metlocator.metlife.aaa-metlocator-execute-Search?searchType=findDentistHCR_AZ&planType=DPPO&networkID=2
+1710017100	2018	b8639464dd1fba2a366eed9409062ebeaaa48fe3b2630e3ab0f28230ae6426b0	db9a89f9b51c5542e501a5acadc9933f	1	https:--metlocator.metlife.aaa-metlocator-execute-Search?searchType=findDentistHCR_AZ&planType=DPPO&networkID=2
+1710017100	2018	b8639464dd1fba2a366eed9409062ebeaaa48fe3b2630e3ab0f28230ae6426b0	db9a89f9b51c5542e501a5acadc9933f	1	https:--metlocator.metlife.aaa-metlocator-execute-Search?searchType=findDentistHCR_AZ&planType=DPPO&networkID=2
+1710017100	2018	b8639464dd1fba2a366eed9409062ebeaaa48fe3b2630e3ab0f28230ae6426b0	db9a89f9b51c5542e501a5acadc9933f	1	https:--metlocator.metlife.aaa-metlocator-execute-Search?searchType=findDentistHCR_AZ&planType=DPPO&networkID=2
+1710017100	2018	b8639464dd1fba2a366eed9409062ebeaaa48fe3b2630e3ab0f28230ae6426b0	db9a89f9b51c5542e501a5acadc9933f	1	https:--metlocator.metlife.aaa-metlocator-execute-Search?searchType=findDentist
+
+```
+
+**Export the above view data into hdfs location /user/hduser/defaulterinfo with the pipe ‘|’ delimiter
+the following columns issuerid,businessyear,statedesc,sourcename,maskednetworkurl,sex,grade,marital,newbillamt,defaulter**
+
+insert overwrite directory '/user/hduser/projects/creditcard_insurance/defaulterinfo/'
+row format delimited fields terminated by '|'
+select * from insure.middlegradeview where defaulter=1;
+
+``` 
+hive> insert overwrite directory '/user/hduser/projects/creditcard_insurance/defaulterinfo/'
+    > row format delimited fields terminated by '|'
+    > select * from insure.middlegradeview where defaulter=1;
+WARNING: Hive-on-MR is deprecated in Hive 2 and may not be available in the future versions. Consider using a different execution engine (i.e. spark, tez) or using Hive 1.X releases.
+Query ID = hduser_20220709151023_12e919f9-ecf3-4fe6-85cd-7183c94eba32
+Total jobs = 3
+Launching Job 1 out of 3
+Number of reduce tasks is set to 0 since there's no reduce operator
+Starting Job = job_1657271823979_0033, Tracking URL = http://Inceptez:8088/proxy/application_1657271823979_0033/
+Kill Command = /usr/local/hadoop/bin/hadoop job  -kill job_1657271823979_0033
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 0
+2022-07-09 15:11:07,498 Stage-1 map = 0%,  reduce = 0%
+2022-07-09 15:11:24,045 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 10.32 sec
+MapReduce Total cumulative CPU time: 10 seconds 320 msec
+Ended Job = job_1657271823979_0033
+Stage-3 is selected by condition resolver.
+Stage-2 is filtered out by condition resolver.
+Stage-4 is filtered out by condition resolver.
+Moving data to directory hdfs://localhost:54310/user/hduser/projects/creditcard_insurance/defaulterinfo/.hive-staging_hive_2022-07-09_15-10-23_147_4379359654961046592-1/-ext-10000
+Moving data to directory /user/hduser/projects/creditcard_insurance/defaulterinfo
+MapReduce Jobs Launched: 
+Stage-Stage-1: Map: 1   Cumulative CPU: 10.32 sec   HDFS Read: 35104 HDFS Write: 68033 SUCCESS
+Total MapReduce CPU Time Spent: 10 seconds 320 msec
+OK
+Time taken: 63.179 seconds
+
+```
